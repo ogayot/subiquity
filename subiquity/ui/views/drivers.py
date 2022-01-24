@@ -99,7 +99,7 @@ class DriversView(BaseView):
         self._w = self.form.as_screen(excerpt=_(excerpt))
 
     def done(self, result):
-        log.debug(f"User input: {result}")
+        log.debug("User input: %r", result)
         self.controller.done(result)
 
     def cancel(self, result=None):
