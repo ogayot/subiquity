@@ -46,6 +46,10 @@ from subiquity.server.curtin import (
     run_curtin_command,
     start_curtin_command,
     )
+from subiquity.server.types import (
+    InstallerChannels,
+    )
+
 
 log = logging.getLogger("subiquity.server.controllers.install")
 
@@ -156,14 +160,16 @@ class InstallController(SubiquityController):
 
             self.app.update_state(ApplicationState.RUNNING)
 
-            for_install_path = await self.configure_apt(context=context)
+            self.for_install_path = await self.configure_apt(context=context)
+
+            await self.app.hub.abroadcast(InstallerChannels.APT_CONFIGURED)
 
             if os.path.exists(self.model.target):
                 await self.unmount_target(
                     context=context, target=self.model.target)
 
             await self.curtin_install(
-                context=context, source='cp://' + for_install_path)
+                context=context, source='cp://' + self.for_install_path)
 
             self.app.update_state(ApplicationState.POST_WAIT)
 
@@ -195,6 +201,16 @@ class InstallController(SubiquityController):
         packages = await self.get_target_packages(context=context)
         for package in packages:
             await self.install_package(context=context, package=package)
+        if self.model.drivers.do_install:
+            with context.child(
+                    "ubuntu-drivers-install",
+                    "installing third-party drivers") as child:
+                cmd = ["ubuntu-drivers", "install"]
+                if self.model.source.current.variant == 'server':
+                    cmd.append('--gpgpu')
+                await run_curtin_command(
+                    self.app, child, "in-target", "-t", self.tpath(),
+                    "--", *cmd)
 
         if self.model.network.has_network:
             self.app.update_state(ApplicationState.UU_RUNNING)
