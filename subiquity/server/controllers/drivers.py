@@ -79,7 +79,6 @@ class DriversController(SubiquityController):
                 self.has_drivers = False
                 await self.configured()
                 return
-            # XXX need to check ubuntu-drivers is available here!
             result = await run_curtin_command(
                 self.app, context, "in-target", "-t", d,
                 "--", *cmd, capture=True)
