@@ -18,5 +18,5 @@ import logging
 log = logging.getLogger('subiquity.models.drivers')
 
 
-class DriversModel(object):
+class DriversModel:
     do_install = False
