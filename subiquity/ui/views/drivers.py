@@ -20,6 +20,7 @@ Provides high level options for Ubuntu install
 """
 import asyncio
 import logging
+from typing import Optional
 
 from urwid import (
     connect_signal,
@@ -52,15 +53,16 @@ class DriversView(BaseView):
 
     form = None
 
-    def __init__(self, controller, has_drivers):
+    def __init__(self, controller, has_drivers: Optional[bool],
+                 install: bool) -> None:
         self.controller = controller
 
         if has_drivers is None:
-            self.make_waiting()
+            self.make_waiting(install)
         else:
-            self.make_main()
+            self.make_main(install)
 
-    def make_waiting(self):
+    def make_waiting(self, install: bool):
         self.spinner = Spinner(self.controller.app.aio_loop, style='dots')
         self.spinner.start()
         rows = [
@@ -70,13 +72,13 @@ class DriversView(BaseView):
             ]
         btn = ok_btn(_("Continue"), on_press=lambda sender: self.done(False))
         self._w = screen(rows, [btn])
-        asyncio.create_task(self._wait())
+        asyncio.create_task(self._wait(install))
 
-    async def _wait(self):
+    async def _wait(self, install: bool):
         has_drivers = await self.controller._wait_drivers()
         self.spinner.stop()
         if has_drivers:
-            self.make_main()
+            self.make_main(install)
         else:
             self.make_no_drivers()
 
@@ -85,8 +87,8 @@ class DriversView(BaseView):
         btn = ok_btn(_("Continue"), on_press=lambda sender: self.done(False))
         self._w = screen(rows, [btn])
 
-    def make_main(self):
-        self.form = DriversForm(initial={'install': True})
+    def make_main(self, install: bool) -> None:
+        self.form = DriversForm(initial={'install': install})
 
         excerpt = _(
             "Third-party drivers were found. Do you want to install them?")

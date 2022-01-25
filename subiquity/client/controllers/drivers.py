@@ -18,6 +18,7 @@ import logging
 
 from subiquitycore.tuicontroller import Skip
 
+from subiquity.common.types import DriversResponse
 from subiquity.client.controller import SubiquityTuiController
 from subiquity.ui.views.drivers import DriversView
 
@@ -28,14 +29,16 @@ class DriversController(SubiquityTuiController):
 
     endpoint_name = 'drivers'
 
-    async def make_ui(self):
-        has_drivers = await self.endpoint.GET()
-        if has_drivers is False:
+    async def make_ui(self) -> DriversView:
+        response: DriversResponse = await self.endpoint.GET()
+        if response.has_drivers is False:
             raise Skip
-        return DriversView(self, has_drivers)
+        return DriversView(self, response.has_drivers, response.install)
 
-    async def _wait_drivers(self):
-        return await self.endpoint.GET(wait=True)
+    async def _wait_drivers(self) -> bool:
+        response: DriversResponse = await self.endpoint.GET(wait=True)
+        assert response.has_drivers is not None
+        return response.has_drivers
 
     async def run_answers(self):
         if 'install' not in self.answers:
