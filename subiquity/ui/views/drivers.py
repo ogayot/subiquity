@@ -44,7 +44,7 @@ class DriversForm(Form):
 
     cancel_label = _("Back")
 
-    install = BooleanField("Install the drivers?")
+    install = BooleanField(_("Install the drivers?"))
 
 
 class DriversView(BaseView):
