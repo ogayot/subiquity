@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import asyncio
 import logging
 
 from subiquitycore.tuicontroller import Skip
@@ -40,32 +39,9 @@ class DriversController(SubiquityTuiController):
         assert response.has_drivers is not None
         return response.has_drivers
 
-    async def run_answers(self):
-        if 'install' not in self.answers:
-            return
-
-        import urwid
-        from subiquitycore.testing.view_helpers import (
-            click,
-            find_button_matching,
-            find_with_pred,
-            )
-
-        def text_finder(txt):
-            def pred(w):
-                return isinstance(w, urwid.Text) and txt in w.text
-            return pred
-
-        view = self.app.ui.body
-        while find_with_pred(view, text_finder('Looking for')):
-            await asyncio.sleep(0.2)
-        if find_with_pred(view, text_finder('No applicable')):
-            click(find_button_matching(view, "Continue"))
-            return
-
-        view.form.install.value = self.answers['install']
-
-        click(view.form.done_btn)
+    async def run_answers(self) -> None:
+        if 'install' in self.answers:
+            self.done(self.answers["install"])
 
     def cancel(self):
         self.app.prev_screen()
