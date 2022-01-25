@@ -41,6 +41,8 @@ log = logging.getLogger('subiquity.ui.views.drivers')
 
 
 class DriversForm(Form):
+    """ Form that shows a checkbox to configure whether we want to install the
+    available drivers or not. """
 
     cancel_label = _("Back")
 
@@ -62,7 +64,9 @@ class DriversView(BaseView):
         else:
             self.make_main(install)
 
-    def make_waiting(self, install: bool):
+    def make_waiting(self, install: bool) -> None:
+        """ Change the view into a spinner and start waiting for drivers
+        asynchronously. """
         self.spinner = Spinner(self.controller.app.aio_loop, style='dots')
         self.spinner.start()
         rows = [
@@ -74,7 +78,9 @@ class DriversView(BaseView):
         self._w = screen(rows, [btn])
         asyncio.create_task(self._wait(install))
 
-    async def _wait(self, install: bool):
+    async def _wait(self, install: bool) -> None:
+        """ Wait until the "list" of drivers is available and change the view
+        accordingly. """
         has_drivers = await self.controller._wait_drivers()
         self.spinner.stop()
         if has_drivers:
@@ -82,12 +88,16 @@ class DriversView(BaseView):
         else:
             self.make_no_drivers()
 
-    def make_no_drivers(self):
+    def make_no_drivers(self) -> None:
+        """ Change the view into an information page that shows that no
+        third-party drivers are available for installation. """
+
         rows = [Text(_("No applicable third-party drivers were found."))]
         btn = ok_btn(_("Continue"), on_press=lambda sender: self.done(False))
         self._w = screen(rows, [btn])
 
     def make_main(self, install: bool) -> None:
+        """ Change the view to display the drivers form. """
         self.form = DriversForm(initial={'install': install})
 
         excerpt = _(

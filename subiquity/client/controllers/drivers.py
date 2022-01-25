@@ -43,9 +43,9 @@ class DriversController(SubiquityTuiController):
         if 'install' in self.answers:
             self.done(self.answers["install"])
 
-    def cancel(self):
+    def cancel(self) -> None:
         self.app.prev_screen()
 
-    def done(self, install):
+    def done(self, install: bool) -> None:
         log.debug("DriversController.done next_screen install=%s", install)
         self.app.next_screen(self.endpoint.POST(install))
