@@ -62,7 +62,7 @@ class DriversView(BaseView):
         if drivers is None:
             self.make_waiting(install)
         else:
-            self.make_main(install)
+            self.make_main(install, drivers)
 
     def make_waiting(self, install: bool) -> None:
         """ Change the view into a spinner and start waiting for drivers
@@ -84,7 +84,7 @@ class DriversView(BaseView):
         drivers = await self.controller._wait_drivers()
         self.spinner.stop()
         if drivers:
-            self.make_main(install)
+            self.make_main(install, drivers)
         else:
             self.make_no_drivers()
 
@@ -96,12 +96,12 @@ class DriversView(BaseView):
         btn = ok_btn(_("Continue"), on_press=lambda sender: self.done(False))
         self._w = screen(rows, [btn])
 
-    def make_main(self, install: bool) -> None:
+    def make_main(self, install: bool, drivers: List[str]) -> None:
         """ Change the view to display the drivers form. """
         self.form = DriversForm(initial={'install': install})
 
         excerpt = _(
-            "Third-party drivers were found. Do you want to install them?")
+            "The following third-party drivers were found. Do you want to install them?")
 
         def on_cancel(_: DriversForm) -> None:
             self.cancel()
@@ -111,7 +111,11 @@ class DriversView(BaseView):
             lambda result: self.done(result.install.value))
         connect_signal(self.form, 'cancel', on_cancel)
 
-        self._w = self.form.as_screen(excerpt=_(excerpt))
+        rows = [Text(f"* {driver}") for driver in drivers]
+        rows.append(Text(""))
+        rows.extend(self.form.as_rows())
+
+        self._w = screen(rows, self.form.buttons, excerpt=excerpt)
 
     def done(self, install: bool) -> None:
         log.debug("User input: %r", install)
