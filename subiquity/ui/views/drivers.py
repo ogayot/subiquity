@@ -20,7 +20,7 @@ Provides high level options for Ubuntu install
 """
 import asyncio
 import logging
-from typing import Optional
+from typing import List, Optional
 
 from urwid import (
     connect_signal,
@@ -55,11 +55,11 @@ class DriversView(BaseView):
 
     form = None
 
-    def __init__(self, controller, has_drivers: Optional[bool],
+    def __init__(self, controller, drivers: Optional[List[str]],
                  install: bool) -> None:
         self.controller = controller
 
-        if has_drivers is None:
+        if drivers is None:
             self.make_waiting(install)
         else:
             self.make_main(install)
@@ -81,9 +81,9 @@ class DriversView(BaseView):
     async def _wait(self, install: bool) -> None:
         """ Wait until the "list" of drivers is available and change the view
         accordingly. """
-        has_drivers = await self.controller._wait_drivers()
+        drivers = await self.controller._wait_drivers()
         self.spinner.stop()
-        if has_drivers:
+        if drivers:
             self.make_main(install)
         else:
             self.make_no_drivers()

@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+from typing import List
 
 from subiquitycore.tuicontroller import Skip
 
@@ -30,14 +31,14 @@ class DriversController(SubiquityTuiController):
 
     async def make_ui(self) -> DriversView:
         response: DriversResponse = await self.endpoint.GET()
-        if response.has_drivers is False:
+        if not response.drivers and response.drivers is not None:
             raise Skip
-        return DriversView(self, response.has_drivers, response.install)
+        return DriversView(self, response.drivers, response.install)
 
-    async def _wait_drivers(self) -> bool:
+    async def _wait_drivers(self) -> List[str]:
         response: DriversResponse = await self.endpoint.GET(wait=True)
-        assert response.has_drivers is not None
-        return response.has_drivers
+        assert response.drivers is not None
+        return response.drivers
 
     async def run_answers(self) -> None:
         if 'install' in self.answers:
