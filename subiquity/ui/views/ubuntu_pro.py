@@ -118,11 +118,21 @@ class UbuntuOneEmailForm(SubForm):
     """
     email = EmailField(_("Email:"), help="")
 
+    def validate_email(self) -> None:
+        # We only do basic format check here. EmailField already prevents the
+        # user from inputting characters that are not supported in an Ubuntu
+        # One email address.
+        if not re.fullmatch(r".+@.+\..+", self.email.value):
+            return _("Invalid email address")
+
 
 class UpgradeModeForm(Form):
     """ Represents a form requesting the Ubuntu Pro credentials.
     +---------------------------------------------------------+
-    | (X)  Add token manually                                 |
+    | (X)  Log in with Ubuntu One                             |
+    |      Email: user@domain.com                             |
+    |                                                         |
+    | ( )  Add token manually                                 |
     |      Token: C123456789ABCDEF                            |
     |             This is your Ubuntu Pro token               |
     |                                                         |
@@ -134,6 +144,12 @@ class UpgradeModeForm(Form):
     ok_label = _("Continue")
     group: List[RadioButtonField] = []
 
+    with_ubuntu_one = RadioButtonField(
+            group, _("Log in with Ubuntu One"),
+            help=NO_HELP)
+    with_ubuntu_one_subform = SubFormField(
+            UbuntuOneEmailForm, "", help=NO_HELP)
+
     with_contract_token = RadioButtonField(
             group, _("Add token manually"),
             help=NO_HELP)
@@ -141,16 +157,28 @@ class UpgradeModeForm(Form):
             ContractTokenForm, "", help=NO_HELP)
 
     def __init__(self, initial) -> None:
-        """ Initializer that configures the callback to run when the radio is
-        checked/unchecked. Since there is a single radio for now, it can
-        only be unchecked programmatically. """
+        """ Initializer that configures the callback to run when the radios are
+        checked/unchecked. """
         super().__init__(initial)
+        connect_signal(self.with_ubuntu_one.widget,
+                       'change', self._toggle_ubuntu_one_input)
         connect_signal(self.with_contract_token.widget,
                        'change', self._toggle_contract_token_input)
+
+        if initial["with_contract_token_subform"]["token"]:
+            self.with_ubuntu_one_subform.enabled = False
+            self.with_contract_token_subform.enabled = True
+        else:
+            self.with_ubuntu_one_subform.enabled = True
+            self.with_contract_token_subform.enabled = False
 
     def _toggle_contract_token_input(self, sender, new_value):
         """ Enable/disable the sub-form that requests the contract token. """
         self.with_contract_token_subform.enabled = new_value
+
+    def _toggle_ubuntu_one_input(self, sender, new_value):
+        """ Enable/disable the sub-form that requests the Ubuntu One email. """
+        self.with_ubuntu_one_subform.enabled = new_value
 
 
 class UpgradeYesNoForm(Form):
@@ -222,6 +250,8 @@ class UbuntuProView(BaseView):
             })
         self.upgrade_mode_form = UpgradeModeForm(initial={
             "with_contract_token_subform": {"token": token},
+            "with_contract_token": bool(token),
+            "with_ubuntu_one": not token,
             })
 
         def on_upgrade_yes_no_cancel(unused: UpgradeYesNoForm):
@@ -247,14 +277,17 @@ class UbuntuProView(BaseView):
 
     def upgrade_mode_screen(self) -> Widget:
         """ Return a screen that asks the user for his information (e.g.,
-        contract token).
+        Ubuntu One email or contract token.
         +---------------------------------------------------------+
-        | To upgrade to Ubuntu Pro, you can enter your token      |
-        | manually.                                               |
+        | To upgrade to Ubuntu Pro, you can log in with your      |
+        | Ubuntu One account or enter your token manually.        |
         |                                                         |
         | [ How to Register -> ]                                  |
         |                                                         |
-        | (X)  Add token manually                                 |
+        | (X)  Log in with Ubuntu One                             |
+        |      Email: user@domain.com                             |
+        |                                                         |
+        | ( )  Add token manually                                 |
         |      Token: C123456789ABCDEF                            |
         |             This is your Ubuntu Pro token               |
         |                                                         |
@@ -263,8 +296,8 @@ class UbuntuProView(BaseView):
         +---------------------------------------------------------+
         """
 
-        excerpt = _("To upgrade to Ubuntu Pro, you can enter your token"
-                    " manually.")
+        excerpt = _("To upgrade to Ubuntu Pro, you can log in with your "
+                    "Ubuntu One account or enter your token manually.")
 
         how_to_register_btn = menu_btn(
                 _("How to Register"),
@@ -449,7 +482,8 @@ class UbuntuProView(BaseView):
 
     def upgrade_yes_no_done(self, form: UpgradeYesNoForm) -> None:
         """ If skip is selected, move on to the next screen.
-        Otherwise, show the form requesting the contract token. """
+        Otherwise, show the form requesting an Ubuntu One email or
+        a contract token. """
         if form.skip.value:
             self.controller.done("")
         else:
