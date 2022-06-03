@@ -44,6 +44,7 @@ from subiquitycore.ui.container import (
     WidgetWrap,
     )
 from subiquitycore.ui.form import (
+    EmailField,
     Form,
     SubForm,
     SubFormField,
@@ -107,6 +108,15 @@ class ContractTokenForm(SubForm):
         format. """
         if not 24 <= len(self.token.value) <= 30:
             return _("Invalid token: should be between 24 and 30 characters")
+
+
+class UbuntuOneEmailForm(SubForm):
+    """ Represents a sub-form requesting Ubuntu One email address.
+    +---------------------------------------------------------+
+    |      Email: user@domain.com                             |
+    +---------------------------------------------------------+
+    """
+    email = EmailField(_("Email:"), help="")
 
 
 class UpgradeModeForm(Form):
