@@ -1255,3 +1255,32 @@ class TestIdentityValidation(TestAPI):
             resp = await inst.get('/identity/validate_username',
                                   username='o#$%^&')
             self.assertEqual(resp, 'INVALID_CHARS')
+
+
+class TestUbuntuProContractSelection(TestAPI):
+    async def test_upcs_flow(self):
+        async with start_server('examples/simple.json') as inst:
+            # Wait should fail if no initiate first.
+            with self.assertRaises(Exception):
+                await inst.get('/ubuntu_pro/contract_selection/wait')
+
+            # Cancel should fail if no initiate first.
+            with self.assertRaises(Exception):
+                await inst.post('/ubuntu_pro/contract_selection/cancel')
+
+            await inst.post('/ubuntu_pro/contract_selection/initiate',
+                            {"email": "testuser@testdomain.com"})
+            # Double initiate should fail
+            with self.assertRaises(Exception):
+                await inst.post('/ubuntu_pro/contract_selection/initiate',
+                                {"email": "testuser@testdomain.com"})
+
+            # This call should block for long enough.
+            with self.assertRaises(asyncio.TimeoutError):
+                await asyncio.wait_for(
+                        inst.get('/ubuntu_pro/contract_selection/wait'),
+                        timeout=0.5)
+
+            await inst.post('/ubuntu_pro/contract_selection/cancel')
+            with self.assertRaises(Exception):
+                await inst.get('/ubuntu_pro/contract_selection/wait')

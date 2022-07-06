@@ -524,6 +524,29 @@ class UbuntuProCheckTokenStatus(enum.Enum):
 
 
 @attr.s(auto_attribs=True)
+class UPCSInitiateRequest:
+    email: str
+
+
+@attr.s(auto_attribs=True)
+class UPCSInitiateResponse:
+    confirmation_code: str
+    validity_seconds: int
+
+
+class UPCSWaitStatus(enum.Enum):
+    SUCCESS = enum.auto()
+    TIMEOUT = enum.auto()
+
+
+@attr.s(auto_attribs=True)
+class UPCSWaitResponse:
+    status: UPCSWaitStatus
+
+    contract_token: Optional[str]
+
+
+@attr.s(auto_attribs=True)
 class UbuntuProService:
     name: str
     description: str

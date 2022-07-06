@@ -14,14 +14,20 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """ Module defining the server-side controller class for Ubuntu Advantage. """
 
+import asyncio
 import logging
 import os
+from typing import Optional
 
 from subiquity.common.apidef import API
 from subiquity.common.types import (
     UbuntuProInfo,
     UbuntuProCheckTokenAnswer,
     UbuntuProCheckTokenStatus,
+    UPCSInitiateRequest,
+    UPCSInitiateResponse,
+    UPCSWaitStatus,
+    UPCSWaitResponse,
 )
 from subiquity.server.ubuntu_advantage import (
     InvalidTokenError,
@@ -32,6 +38,15 @@ from subiquity.server.ubuntu_advantage import (
     MockedUAInterfaceStrategy,
     UAClientUAInterfaceStrategy,
 )
+from subiquity.server.ua_contracts import (
+    UAContractsClient,
+    STAGING_BASE_URL as UACONTRACTS_STAGING_BASE_URL,
+    PRODUCTION_BASE_URL as UACONTRACTS_PRODUCTION_BASE_URL,
+    )
+from subiquity.server.contract_selection import (
+    ContractSelection,
+    UPCSExpiredError,
+    )
 from subiquity.server.controller import SubiquityController
 
 log = logging.getLogger("subiquity.server.controllers.ubuntu_pro")
@@ -39,6 +54,20 @@ log = logging.getLogger("subiquity.server.controllers.ubuntu_pro")
 TOKEN_DESC = """\
 A valid token starts with a C and is followed by 23 to 29 Base58 characters.
 See https://pkg.go.dev/github.com/btcsuite/btcutil/base58#CheckEncode"""
+
+
+class UPCSAlreadyInitiatedError(Exception):
+    """ Exception to be raised when trying to initiate a contract selection
+    while another contract selection is already pending. """
+
+
+class UPCSCancelledError(Exception):
+    """ Exception to be raised when a contract selection got cancelled. """
+
+
+class UPCSNotInitiatedError(Exception):
+    """ Exception to be raised when trying to cancel or wait on a contract
+    selection that was not initiated. """
 
 
 class UbuntuProController(SubiquityController):
@@ -67,6 +96,7 @@ class UbuntuProController(SubiquityController):
         strategy: UAInterfaceStrategy
         if app.opts.dry_run:
             strategy = MockedUAInterfaceStrategy(scale_factor=app.scale_factor)
+            uacontracts_base_url = UACONTRACTS_STAGING_BASE_URL
         else:
             # Make sure we execute `$PYTHON "$SNAP/usr/bin/ubuntu-advantage"`.
             executable = (
@@ -74,7 +104,11 @@ class UbuntuProController(SubiquityController):
                 os.path.join(os.environ["SNAP"], "usr/bin/ubuntu-advantage"),
             )
             strategy = UAClientUAInterfaceStrategy(executable=executable)
+            uacontracts_base_url = UACONTRACTS_PRODUCTION_BASE_URL
         self.ua_interface = UAInterface(strategy)
+        self.uacc = UAContractsClient(uacontracts_base_url)
+        self.cs: Optional[ContractSelection] = None
+        self.magic_token = Optional[str]
         super().__init__(app)
 
     def load_autoinstall_data(self, data: dict) -> None:
@@ -139,3 +173,39 @@ class UbuntuProController(SubiquityController):
 
         return UbuntuProCheckTokenAnswer(status=status,
                                          subscription=subscription)
+
+    async def contract_selection_initiate_POST(
+            self, data: UPCSInitiateRequest) -> UPCSInitiateResponse:
+        """ Initiate the contract selection request and start the polling. """
+        if self.cs and not self.cs.task.done():
+            raise UPCSAlreadyInitiatedError
+
+        self.cs = await ContractSelection.initiate(client=self.uacc,
+                                                   email=data.email)
+
+        return UPCSInitiateResponse(
+                confirmation_code=self.cs.confirmation_code,
+                validity_seconds=self.cs.validity_seconds)
+
+    async def contract_selection_wait_GET(self) -> UPCSWaitResponse:
+        """ Block until the contract selection finishes (and returns a contract
+        token) or times out. """
+        if self.cs is None:
+            raise UPCSNotInitiatedError
+
+        try:
+            return UPCSWaitResponse(
+                    status=UPCSWaitStatus.SUCCESS,
+                    contract_token=await asyncio.shield(self.cs.task))
+        except UPCSExpiredError:
+            return UPCSWaitResponse(
+                    status=UPCSWaitStatus.TIMEOUT,
+                    contract_token=None)
+
+    async def contract_selection_cancel_POST(self) -> None:
+        """ Cancel the current contract selection. """
+        if self.cs is None:
+            raise UPCSNotInitiatedError
+
+        self.cs.cancel()
+        self.cs = None
