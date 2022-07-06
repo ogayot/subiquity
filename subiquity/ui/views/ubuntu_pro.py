@@ -44,6 +44,7 @@ from subiquitycore.ui.container import (
     WidgetWrap,
     )
 from subiquitycore.ui.form import (
+    BoundSubFormField,
     EmailField,
     Form,
     SubForm,
@@ -56,12 +57,14 @@ from subiquitycore.ui.form import (
 from subiquitycore.ui.spinner import (
     Spinner,
     )
+from subiquitycore.ui.countdown import CountdownSeconds
 from subiquitycore.ui.stretchy import (
     Stretchy,
     )
 from subiquitycore.ui.utils import (
     button_pile,
     screen,
+    SomethingFailed,
     )
 
 from subiquitycore.ui.interactive import StringEditor
@@ -275,6 +278,67 @@ class UbuntuProView(BaseView):
 
         super().__init__(self.upgrade_yes_no_screen())
 
+    def cancel_cs(self, _: Form) -> None:
+        def cancelled() -> None:
+            self._w = self.upgrade_mode_screen()
+
+        self.controller.contract_selection_cancel(
+                on_cancelled=cancelled)
+
+    def contract_token_selection_screen(self,
+                                        email: str,
+                                        confirmation_code: str,
+                                        validity_seconds: int) -> Widget:
+        """ Return a screen that shows the confirmation code, the time
+        remaining before expiration and some information.
+        +---------------------------------------------------------+
+        | To attach this machine, navigate to                     |
+        | ubuntu.com/pro/attach on another device. Log into your  |
+        | existing Ubuntu Pro account:                            |
+        | user@domain.com                                         |
+        |                                                         |
+        | You will be asked to verify this installation. Ensure   |
+        | the Attach Code displayed is the same on your Ubuntu    |
+        | Pro account:                                            |
+        |                                                         |
+        |                          123456                         |
+        |                                                         |
+        |           Verifying attach for user@domain.com          |
+        |                                                         |
+        |                        [ Cancel ]                       |
+        +---------------------------------------------------------+
+        """
+        spinner = Spinner(self.controller.app.aio_loop, style="dots")
+        spinner.start()
+        countdown = CountdownSeconds(duration=validity_seconds)
+        countdown.start()
+        rows = [
+            Text(_("To attach this machine, navigate to ubuntu.com/pro/attach"
+                   " on another device. Log into your existing Ubuntu Pro"
+                   " account:")),
+            Text(email),
+            Text(""),
+            Text(_("You will be asked to verify this installation. Ensure"
+                   " the Attach Code displayed is the same on your Ubuntu Pro"
+                   " account:")),
+            Text(""),
+            Text(""),
+            Text(confirmation_code, align="center"),
+            Text(""),
+            spinner,
+            Text(""),
+            countdown,
+            Text(""),
+            Text(_(f"Verifying attach for {email}"), align="center")
+        ]
+        button = cancel_btn(label=_("Cancel"), on_press=self.cancel_cs)
+
+        return screen(
+                ListBox(rows),
+                buttons=[button],
+                excerpt=None,
+                focus_buttons=True)
+
     def upgrade_mode_screen(self) -> Widget:
         """ Return a screen that asks the user for his information (e.g.,
         Ubuntu One email or contract token.
@@ -440,45 +504,113 @@ class UbuntuProView(BaseView):
                 excerpt=None,
                 focus_buttons=True)
 
-    def upgrade_mode_done(self, form: UpgradeModeForm) -> None:
+    def contract_token_check_ok(self, subscription: UbuntuProSubscription) \
+            -> None:
+        def show_subscription() -> None:
+            self.remove_overlay()
+            self.show_subscription(subscription=subscription)
+
+        self.remove_overlay()
+        widget = TokenAddedWidget(
+                parent=self,
+                on_continue=show_subscription)
+        self.show_stretchy_overlay(widget)
+
+    def upgrade_mode_manual_done(self, form: BoundSubFormField) -> None:
         """ Open the loading dialog and asynchronously check if the token is
         valid. """
-        def on_success(subscription: UbuntuProSubscription) -> None:
-            def show_subscription() -> None:
-                self.remove_overlay()
-                self.show_subscription(subscription=subscription)
-
-            self.remove_overlay()
-            widget = TokenAddedWidget(
-                    parent=self,
-                    on_continue=show_subscription)
-            self.show_stretchy_overlay(widget)
-
         def on_failure(status: UbuntuProCheckTokenStatus) -> None:
             self.remove_overlay()
-            token_field = form.with_contract_token_subform.widget.form.token
+            token_field = form.widget.form.token
             if status == UbuntuProCheckTokenStatus.INVALID_TOKEN:
                 self.show_invalid_token()
                 token_field.in_error = True
                 token_field.show_extra(("info_error", "Invalid token"))
-                form.validated()
+                form.widget.form.validated()
             elif status == UbuntuProCheckTokenStatus.EXPIRED_TOKEN:
                 self.show_expired_token()
                 token_field.in_error = True
                 token_field.show_extra(("info_error", "Expired token"))
-                form.validated()
+                form.widget.form.validated()
             elif status == UbuntuProCheckTokenStatus.UNKNOWN_ERROR:
                 self.show_unknown_error()
 
-        token: str = form.with_contract_token_subform.value["token"]
+        token: str = form.value["token"]
         checking_token_overlay = CheckingContractToken(self)
         self.show_overlay(checking_token_overlay,
                           width=checking_token_overlay.width,
                           min_width=None)
 
         self.controller.check_token(token,
-                                    on_success=on_success,
+                                    on_success=self.contract_token_check_ok,
                                     on_failure=on_failure)
+
+    def upgrade_mode_ubuntu_one_done(self, form: BoundSubFormField) -> None:
+        """ Open the loading dialog and then the magic attach screen. """
+        email: str = form.value["email"]
+
+        def initiated(confirmation_code: str, validity_seconds: int) -> None:
+            self.remove_overlay()
+            self._w = self.contract_token_selection_screen(
+                    email=email,
+                    confirmation_code=confirmation_code,
+                    validity_seconds=validity_seconds)
+
+            def contract_selected(contract_token: str) -> None:
+                checking_token_overlay = CheckingContractToken(self)
+                self.show_overlay(checking_token_overlay,
+                                  width=checking_token_overlay.width,
+                                  min_width=None)
+
+                def on_failure(status: UbuntuProCheckTokenStatus) -> None:
+                    """ Open a message box stating that the contract-token
+                    obtained via contract-selection is not valid ; and then go
+                    back to the previous screen. """
+
+                    log.error("contract-token obtained via contract-selection"
+                              " counld not be validated: %r", status)
+                    self._w = self.upgrade_mode_screen()
+                    self.show_stretchy_overlay(SomethingFailed(
+                        self,
+                        msg=_("Internal error"),
+                        stderr=_("Could not add the contract token selected.")
+                    ))
+
+                # It would be uncommon to have this call fail in production
+                # because the contract token obtained via contract-selection is
+                # expected to be valid. During testing, a mismatch in the
+                # environment used (e.g., staging in subiquity and production
+                # in u-a-c) can lead to this error though.
+                self.controller.check_token(
+                        contract_token,
+                        on_success=self.contract_token_check_ok,
+                        on_failure=on_failure)
+
+            def wait_timeout() -> None:
+                self._w = self.upgrade_mode_screen()
+                self.show_stretchy_overlay(SomethingFailed(
+                    self,
+                    msg=_("The request timed out"),
+                    stderr=_("No contract was selected within the allowed"
+                             " time frame. Please try again.")))
+
+            self.controller.contract_selection_wait(
+                    on_contract_selected=contract_selected,
+                    on_timeout=wait_timeout)
+
+        # TODO replace with adequate animation
+        checking_token_overlay = CheckingContractToken(self)
+        self.show_overlay(checking_token_overlay,
+                          width=checking_token_overlay.width,
+                          min_width=None)
+        self.controller.contract_selection_initiate(
+                email, on_initiated=initiated)
+
+    def upgrade_mode_done(self, form: UpgradeModeForm) -> None:
+        if form.as_data()["with_contract_token"]:
+            self.upgrade_mode_manual_done(form.with_contract_token_subform)
+        else:
+            self.upgrade_mode_ubuntu_one_done(form.with_ubuntu_one_subform)
 
     def upgrade_yes_no_done(self, form: UpgradeYesNoForm) -> None:
         """ If skip is selected, move on to the next screen.
