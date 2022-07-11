@@ -36,27 +36,27 @@ class ContractSelection:
             self,
             client: UAContractsClient,
             magic_token: str,
-            confirmation_code: str,
+            user_code: str,
             validity_seconds: int) -> None:
         """ Initialize the contract selection. """
         self.client = client
         self.magic_token = magic_token
-        self.confirmation_code = confirmation_code
+        self.user_code = user_code
         self.validity_seconds = validity_seconds
         self.task = asyncio.create_task(self._run_polling())
 
     @classmethod
-    async def initiate(cls, client: UAContractsClient, email: str) \
+    async def initiate(cls, client: UAContractsClient) \
             -> "ContractSelection":
         """ Initiate a contract selection and return a ContractSelection
         request object. """
-        answer = await client.magic_attach_post(email)
+        answer = await client.magic_attach_post()
 
         return cls(
                 client=client,
                 magic_token=answer["token"],
                 validity_seconds=answer["expiresIn"],
-                confirmation_code=answer["confirmationCode"])
+                user_code=answer["userCode"])
 
     async def _run_polling(self) -> str:
         """ Runs the polling and eventually return a contract token. """

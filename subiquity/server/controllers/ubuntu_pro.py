@@ -24,7 +24,6 @@ from subiquity.common.types import (
     UbuntuProInfo,
     UbuntuProCheckTokenAnswer,
     UbuntuProCheckTokenStatus,
-    UPCSInitiateRequest,
     UPCSInitiateResponse,
     UPCSWaitStatus,
     UPCSWaitResponse,
@@ -174,17 +173,15 @@ class UbuntuProController(SubiquityController):
         return UbuntuProCheckTokenAnswer(status=status,
                                          subscription=subscription)
 
-    async def contract_selection_initiate_POST(
-            self, data: UPCSInitiateRequest) -> UPCSInitiateResponse:
+    async def contract_selection_initiate_POST(self) -> UPCSInitiateResponse:
         """ Initiate the contract selection request and start the polling. """
         if self.cs and not self.cs.task.done():
             raise UPCSAlreadyInitiatedError
 
-        self.cs = await ContractSelection.initiate(client=self.uacc,
-                                                   email=data.email)
+        self.cs = await ContractSelection.initiate(client=self.uacc)
 
         return UPCSInitiateResponse(
-                confirmation_code=self.cs.confirmation_code,
+                user_code=self.cs.user_code,
                 validity_seconds=self.cs.validity_seconds)
 
     async def contract_selection_wait_GET(self) -> UPCSWaitResponse:

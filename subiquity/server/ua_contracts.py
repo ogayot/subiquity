@@ -39,14 +39,12 @@ class UAContractsClient:
         self.base_url = yarl.URL(base_url)
         self.endpoint = yarl.URL("/v1/magic-attach")
 
-    async def magic_attach_post(self, email: str) -> Any:
+    async def magic_attach_post(self) -> Any:
         """ Perform a POST to /v1/magic-attach and return the data from the
         response. """
         async with aiohttp.ClientSession() as session:
-            data = {"email": email}
-            headers = {"Content-Type": "application/json"}
-            async with session.post(self.base_url.join(self.endpoint),
-                                    json=data, headers=headers) as response:
+            async with session.post(
+                    self.base_url.join(self.endpoint)) as response:
                 response.raise_for_status()
                 return await response.json()
 

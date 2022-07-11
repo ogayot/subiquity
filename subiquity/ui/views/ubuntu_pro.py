@@ -45,7 +45,6 @@ from subiquitycore.ui.container import (
     )
 from subiquitycore.ui.form import (
     BoundSubFormField,
-    EmailField,
     Form,
     SubForm,
     SubFormField,
@@ -113,27 +112,10 @@ class ContractTokenForm(SubForm):
             return _("Invalid token: should be between 24 and 30 characters")
 
 
-class UbuntuOneEmailForm(SubForm):
-    """ Represents a sub-form requesting Ubuntu One email address.
-    +---------------------------------------------------------+
-    |      Email: user@domain.com                             |
-    +---------------------------------------------------------+
-    """
-    email = EmailField(_("Email:"), help="")
-
-    def validate_email(self) -> None:
-        # We only do basic format check here. EmailField already prevents the
-        # user from inputting characters that are not supported in an Ubuntu
-        # One email address.
-        if not re.fullmatch(r".+@.+\..+", self.email.value):
-            return _("Invalid email address")
-
-
 class UpgradeModeForm(Form):
     """ Represents a form requesting the Ubuntu Pro credentials.
     +---------------------------------------------------------+
     | (X)  Log in with Ubuntu One                             |
-    |      Email: user@domain.com                             |
     |                                                         |
     | ( )  Add token manually                                 |
     |      Token: C123456789ABCDEF                            |
@@ -150,8 +132,6 @@ class UpgradeModeForm(Form):
     with_ubuntu_one = RadioButtonField(
             group, _("Log in with Ubuntu One"),
             help=NO_HELP)
-    with_ubuntu_one_subform = SubFormField(
-            UbuntuOneEmailForm, "", help=NO_HELP)
 
     with_contract_token = RadioButtonField(
             group, _("Add token manually"),
@@ -163,25 +143,17 @@ class UpgradeModeForm(Form):
         """ Initializer that configures the callback to run when the radios are
         checked/unchecked. """
         super().__init__(initial)
-        connect_signal(self.with_ubuntu_one.widget,
-                       'change', self._toggle_ubuntu_one_input)
         connect_signal(self.with_contract_token.widget,
                        'change', self._toggle_contract_token_input)
 
         if initial["with_contract_token_subform"]["token"]:
-            self.with_ubuntu_one_subform.enabled = False
             self.with_contract_token_subform.enabled = True
         else:
-            self.with_ubuntu_one_subform.enabled = True
             self.with_contract_token_subform.enabled = False
 
     def _toggle_contract_token_input(self, sender, new_value):
         """ Enable/disable the sub-form that requests the contract token. """
         self.with_contract_token_subform.enabled = new_value
-
-    def _toggle_ubuntu_one_input(self, sender, new_value):
-        """ Enable/disable the sub-form that requests the Ubuntu One email. """
-        self.with_ubuntu_one_subform.enabled = new_value
 
 
 class UpgradeYesNoForm(Form):
@@ -286,8 +258,7 @@ class UbuntuProView(BaseView):
                 on_cancelled=cancelled)
 
     def contract_token_selection_screen(self,
-                                        email: str,
-                                        confirmation_code: str,
+                                        user_code: str,
                                         validity_seconds: int) -> Widget:
         """ Return a screen that shows the confirmation code, the time
         remaining before expiration and some information.
@@ -316,20 +287,19 @@ class UbuntuProView(BaseView):
             Text(_("To attach this machine, navigate to ubuntu.com/pro/attach"
                    " on another device. Log into your existing Ubuntu Pro"
                    " account:")),
-            Text(email),
             Text(""),
             Text(_("You will be asked to verify this installation. Ensure"
                    " the Attach Code displayed is the same on your Ubuntu Pro"
                    " account:")),
             Text(""),
             Text(""),
-            Text(confirmation_code, align="center"),
+            Text(user_code, align="center"),
             Text(""),
             spinner,
             Text(""),
             countdown,
             Text(""),
-            Text(_(f"Verifying attach for {email}"), align="center")
+            Text(_("Verifying attach for XXX"), align="center")
         ]
         button = cancel_btn(label=_("Cancel"), on_press=self.cancel_cs)
 
@@ -341,7 +311,7 @@ class UbuntuProView(BaseView):
 
     def upgrade_mode_screen(self) -> Widget:
         """ Return a screen that asks the user for his information (e.g.,
-        Ubuntu One email or contract token.
+        Ubuntu One or contract token.
         +---------------------------------------------------------+
         | To upgrade to Ubuntu Pro, you can log in with your      |
         | Ubuntu One account or enter your token manually.        |
@@ -349,7 +319,6 @@ class UbuntuProView(BaseView):
         | [ How to Register -> ]                                  |
         |                                                         |
         | (X)  Log in with Ubuntu One                             |
-        |      Email: user@domain.com                             |
         |                                                         |
         | ( )  Add token manually                                 |
         |      Token: C123456789ABCDEF                            |
@@ -545,15 +514,12 @@ class UbuntuProView(BaseView):
                                     on_success=self.contract_token_check_ok,
                                     on_failure=on_failure)
 
-    def upgrade_mode_ubuntu_one_done(self, form: BoundSubFormField) -> None:
+    def upgrade_mode_ubuntu_one_done(self) -> None:
         """ Open the loading dialog and then the magic attach screen. """
-        email: str = form.value["email"]
-
-        def initiated(confirmation_code: str, validity_seconds: int) -> None:
+        def initiated(user_code: str, validity_seconds: int) -> None:
             self.remove_overlay()
             self._w = self.contract_token_selection_screen(
-                    email=email,
-                    confirmation_code=confirmation_code,
+                    user_code=user_code,
                     validity_seconds=validity_seconds)
 
             def contract_selected(contract_token: str) -> None:
@@ -603,18 +569,17 @@ class UbuntuProView(BaseView):
         self.show_overlay(checking_token_overlay,
                           width=checking_token_overlay.width,
                           min_width=None)
-        self.controller.contract_selection_initiate(
-                email, on_initiated=initiated)
+        self.controller.contract_selection_initiate(on_initiated=initiated)
 
     def upgrade_mode_done(self, form: UpgradeModeForm) -> None:
         if form.as_data()["with_contract_token"]:
             self.upgrade_mode_manual_done(form.with_contract_token_subform)
         else:
-            self.upgrade_mode_ubuntu_one_done(form.with_ubuntu_one_subform)
+            self.upgrade_mode_ubuntu_one_done()
 
     def upgrade_yes_no_done(self, form: UpgradeYesNoForm) -> None:
         """ If skip is selected, move on to the next screen.
-        Otherwise, show the form requesting an Ubuntu One email or
+        Otherwise, show the form requesting an Ubuntu One or
         a contract token. """
         if form.skip.value:
             self.controller.done("")

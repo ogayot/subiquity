@@ -1268,12 +1268,10 @@ class TestUbuntuProContractSelection(TestAPI):
             with self.assertRaises(Exception):
                 await inst.post('/ubuntu_pro/contract_selection/cancel')
 
-            await inst.post('/ubuntu_pro/contract_selection/initiate',
-                            {"email": "testuser@testdomain.com"})
+            await inst.post('/ubuntu_pro/contract_selection/initiate')
             # Double initiate should fail
             with self.assertRaises(Exception):
-                await inst.post('/ubuntu_pro/contract_selection/initiate',
-                                {"email": "testuser@testdomain.com"})
+                await inst.post('/ubuntu_pro/contract_selection/initiate')
 
             # This call should block for long enough.
             with self.assertRaises(asyncio.TimeoutError):

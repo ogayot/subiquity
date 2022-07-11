@@ -29,7 +29,6 @@ from subiquity.common.types import (
     UbuntuProCheckTokenStatus as TokenStatus,
     UbuntuProSubscription,
     UPCSWaitStatus,
-    UPCSInitiateRequest,
     )
 from subiquity.ui.views.ubuntu_pro import (
     UbuntuProView,
@@ -151,14 +150,12 @@ class UbuntuProController(SubiquityTuiController):
             self._check_task.cancel()
 
     def contract_selection_initiate(
-            self, email: str,
-            on_initiated: Callable[[str, str], None]) -> None:
+            self, on_initiated: Callable[[str, str], None]) -> None:
         """ Initiate the contract selection asynchronously. Calls on_initiated
         when the contract-selection has initiated. """
         async def inner() -> None:
-            answer = await self.endpoint.contract_selection.initiate.POST(
-                    UPCSInitiateRequest(email=email))
-            on_initiated(confirmation_code=answer.confirmation_code,
+            answer = await self.endpoint.contract_selection.initiate.POST()
+            on_initiated(user_code=answer.user_code,
                          validity_seconds=answer.validity_seconds)
         self._magic_attach_task = schedule_task(inner())
 

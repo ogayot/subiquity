@@ -524,13 +524,8 @@ class UbuntuProCheckTokenStatus(enum.Enum):
 
 
 @attr.s(auto_attribs=True)
-class UPCSInitiateRequest:
-    email: str
-
-
-@attr.s(auto_attribs=True)
 class UPCSInitiateResponse:
-    confirmation_code: str
+    user_code: str
     validity_seconds: int
 
 

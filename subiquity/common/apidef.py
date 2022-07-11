@@ -56,7 +56,6 @@ from subiquity.common.types import (
     TimeZoneInfo,
     UbuntuProInfo,
     UbuntuProCheckTokenAnswer,
-    UPCSInitiateRequest,
     UPCSInitiateResponse,
     UPCSWaitResponse,
     UsernameValidation,
@@ -348,8 +347,7 @@ class API:
 
         class contract_selection:
             class initiate:
-                def POST(data: Payload[UPCSInitiateRequest]) \
-                        -> UPCSInitiateResponse: ...
+                def POST() -> UPCSInitiateResponse: ...
 
             class wait:
                 def GET() -> UPCSWaitResponse: ...
