@@ -67,6 +67,22 @@ class TestUbuntuDriversInterface(unittest.IsolatedAsyncioTestCase):
                 )
 
     @patch.multiple(UbuntuDriversInterface, __abstractmethods__=set())
+    @patch("subiquity.server.ubuntu_drivers.run_curtin_command")
+    async def test_install_driver(self, mock_run_curtin_command):
+        ubuntu_drivers = UbuntuDriversInterface(self.app, gpgpu=False)
+        await ubuntu_drivers.install_driver(
+            root_dir="/target",
+            context="installing third-party driver",
+            name="nvidia-driver-470")
+        mock_run_curtin_command.assert_called_once_with(
+                self.app, "installing third-party driver",
+                "in-target", "-t", "/target",
+                "--",
+                "ubuntu-drivers", "install", "nvidia-driver-470",
+                private_mounts=True,
+                )
+
+    @patch.multiple(UbuntuDriversInterface, __abstractmethods__=set())
     def test_drivers_from_output(self):
         ubuntu_drivers = UbuntuDriversInterface(self.app, gpgpu=False)
 

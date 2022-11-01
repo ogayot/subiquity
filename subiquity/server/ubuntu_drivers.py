@@ -57,9 +57,17 @@ class UbuntuDriversInterface(ABC):
         pass
 
     async def install_drivers(self, root_dir: str, context) -> None:
+        """ Install all the available third-party drivers available. """
         await run_curtin_command(
             self.app, context,
             "in-target", "-t", root_dir, "--", *self.install_drivers_cmd,
+            private_mounts=True)
+
+    async def install_driver(self, root_dir: str, context, name: str) -> None:
+        """ Install one third-party driver specified by its name """
+        await run_curtin_command(
+            self.app, context,
+            "in-target", "-t", root_dir, "--", *self.install_drivers_cmd, name,
             private_mounts=True)
 
     def _drivers_from_output(self, output: str) -> List[str]:
