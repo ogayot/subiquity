@@ -45,6 +45,9 @@ then
     done
 fi
 
+lxc exec $TESTER -- apt update
+lxc exec $TESTER -- apt full-upgrade --yes
+lxc restart $TESTER
 lxc exec $TESTER -- cloud-init status --wait
 
 lxc exec $TESTER -- sh -ec "
