@@ -1,0 +1,24 @@
+# This catalog provides test sources for desktop and server variants.
+# One can feed this catalog to Subiquity to test the behavior of features that
+# depend on the source variant (e.g., third-party drivers).
+- description:
+    en: This test source provides a "Ubuntu Server" base install
+  id: ubuntu-server
+  locale_support: none
+  name:
+    en: Ubuntu Server
+  path: ubuntu-server.squashfs
+  size: 530485248
+  type: fsimage
+  variant: server
+- default: true
+  description:
+    en: This test source provides a "Ubuntu Desktop" base install
+  id: ubuntu-desktop
+  locale_support: none
+  name:
+    en: Ubuntu Desktop
+  path: ubuntu-desktop.squashfs
+  size: 1066115072
+  type: fsimage
+  variant: desktop
