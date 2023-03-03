@@ -26,6 +26,7 @@ from urwid import (
 from subiquitycore.view import (
     BaseView,
     )
+from subiquitycore.ui.actionmenu import Action, ActionMenu
 from subiquitycore.ui.buttons import (
     cancel_btn,
     menu_btn,
@@ -48,8 +49,13 @@ from subiquitycore.ui.spinner import (
 from subiquitycore.ui.stretchy import (
     Stretchy,
     )
+from subiquitycore.ui.table import (
+    TablePile,
+    TableRow,
+    )
 from subiquitycore.ui.utils import (
     button_pile,
+    make_action_menu_row,
     screen,
     SomethingFailed,
     )
@@ -257,6 +263,7 @@ class ConfirmSSHKeys(Stretchy):
     def ok(self, sender):
         for identity in self.identities:
             self.parent.add_key_to_table(identity.key)
+        self.parent.refresh_keys_table()
 
         self.parent.remove_overlay()
 
@@ -284,9 +291,14 @@ class SSHView(BaseView):
         bp = button_pile([self._import_key_btn])
         bp.align = "left"
 
+        self.keys_table = TablePile([])
+        self.refresh_keys_table()
+
         rows = self.form.as_rows() + [
             Text(""),
             bp,
+            Text(""),
+            self.keys_table,
         ]
 
         connect_signal(self.form, 'submit', self.done)
@@ -327,3 +339,26 @@ class SSHView(BaseView):
 
     def add_key_to_table(self, key: str):
         self.keys.append(key)
+
+    def refresh_keys_table(self):
+        self.keys_table.set_contents([TableRow([Text(_("IMPORTED KEYS"))])])
+        for key in self.keys:
+            menu = ActionMenu([
+                Action(label=_("Delete"),
+                       enabled=True,
+                       value=(None, ),
+                       opens_dialog=False),
+            ])
+
+            self.keys_table.insert_rows(
+                    1, [make_action_menu_row([
+                        Text("["),
+                        Text(key),
+                        menu,
+                        Text("]"),
+                    ], menu)])
+            connect_signal(menu, 'action', self._action, key)
+
+    def _action(self, sender, value, key):
+        self.keys.remove(key)
+        self.refresh_keys_table()
