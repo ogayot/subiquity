@@ -76,6 +76,7 @@ class KeyboardModel:
         else:
             self.default_setting = self.layout_for_lang['en_US.UTF-8']
         self.keyboard_list = KeyboardList()
+        self.keyboard_list.load_language('C')
         self._setting = None
 
     @property
@@ -86,7 +87,17 @@ class KeyboardModel:
 
     @setting.setter
     def setting(self, value):
+        self.validate_setting(value)
         self._setting = value
+
+    def validate_setting(self, setting: KeyboardSetting) -> None:
+        kbd_layout = self.keyboard_list.layout_map.get(setting.layout)
+        if kbd_layout is None:
+            raise ValueError(f'Unknown keyboard layout "{setting.layout}"')
+        if not any(variant.code == setting.variant
+                   for variant in kbd_layout.variants):
+            raise ValueError(f'Unknown keyboard variant "{setting.variant}" '
+                             f'for layout "{setting.layout}"')
 
     def render_config_file(self):
         options = ""
@@ -164,12 +175,15 @@ class KeyboardList:
         self._clear()
 
         with open(self._file_for_lang(code)) as kbdnames:
-            self.layouts = [
-                self.serializer.from_json(KeyboardLayout, line)
-                for line in kbdnames
-                ]
+            self.layouts = []
+            self.layout_map = {}
+            for line in kbdnames:
+                kbd_layout = self.serializer.from_json(KeyboardLayout, line)
+                self.layouts.append(kbd_layout)
+                self.layout_map[kbd_layout.code] = kbd_layout
         self.current_lang = code
 
     def _clear(self):
         self.current_lang = None
         self.layouts = []
+        self.layout_map = {}
