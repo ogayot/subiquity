@@ -20,7 +20,11 @@ import os
 import yaml
 
 from subiquity.common.resources import resource_path
-from subiquity.common.types import KeyboardSetting
+from subiquity.common.serialize import Serializer
+from subiquity.common.types import (
+    KeyboardLayout,
+    KeyboardSetting,
+)
 
 log = logging.getLogger("subiquity.models.keyboard")
 
@@ -71,6 +75,7 @@ class KeyboardModel:
             self.default_setting = from_config_file(self.config_path)
         else:
             self.default_setting = self.layout_for_lang['en_US.UTF-8']
+        self.keyboard_list = KeyboardList()
         self._setting = None
 
     @property
@@ -130,3 +135,41 @@ class KeyboardModel:
         for k, v in data.items():
             ret[k] = KeyboardSetting(**v)
         return ret
+
+
+class KeyboardList:
+
+    def __init__(self):
+        self._kbnames_dir = resource_path('kbds')
+        self.serializer = Serializer(compact=True)
+        self._clear()
+
+    def _file_for_lang(self, code):
+        return os.path.join(self._kbnames_dir, code + '.jsonl')
+
+    def _has_language(self, code):
+        return os.path.exists(self._file_for_lang(code))
+
+    def load_language(self, code):
+        if '.' in code:
+            code = code.split('.')[0]
+        if not self._has_language(code):
+            code = code.split('_')[0]
+        if not self._has_language(code):
+            code = 'C'
+
+        if code == self.current_lang:
+            return
+
+        self._clear()
+
+        with open(self._file_for_lang(code)) as kbdnames:
+            self.layouts = [
+                self.serializer.from_json(KeyboardLayout, line)
+                for line in kbdnames
+                ]
+        self.current_lang = code
+
+    def _clear(self):
+        self.current_lang = None
+        self.layouts = []
