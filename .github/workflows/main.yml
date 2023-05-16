@@ -1,0 +1,4 @@
+- name: Mypy PR Annotator
+  # You may pin to the exact commit or the version.
+  # uses: pr-annotators/mypy-pr-annotator@275de036f51303e59633fee25cd788dfc8e5841e
+  uses: pr-annotators/mypy-pr-annotator@v1.0.0
