@@ -366,8 +366,7 @@ class MirrorModel(object):
         # Look for the first compatible candidate with a URI.
         # There is no guarantee that it will be a working mirror since we have
         # not tested it. But it is fine because it will not be used during the
-        # install. It will be placed in etc/apt/sources.list of the target
-        # system.
+        # install.
         with contextlib.suppress(StopIteration):
             filters = [
                 lambda c: c.uri is not None,
