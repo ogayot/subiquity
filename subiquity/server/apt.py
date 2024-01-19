@@ -94,6 +94,8 @@ class AptConfigurer:
     #
     # 2. When the network is expected to be working, copying the original
     #    /etc/apt/sources.list to /etc/apt/sources.list.d/original.list.
+    #    When doing an offline install, removing /etc/apt/sources.list and all
+    #    *.sources and *.list files from under /etc/apt/sources.list.d/
     #
     # 3. writing "deb file:///cdrom $(lsb_release -sc) main restricted"
     #    to /etc/apt/sources.list.
