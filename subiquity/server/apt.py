@@ -93,12 +93,12 @@ class AptConfigurer:
     # 1. Bind-mounting /cdrom into this new overlay.
     #
     # 2. When the network is expected to be working, copying the original
-    #    /etc/apt/sources.list to /etc/apt/sources.list.d/original.list.
+    #    /etc/apt/sources.list to /etc/apt/sources.list.d/10sy-original.list.
     #    When doing an offline install, removing /etc/apt/sources.list and all
     #    *.sources and *.list files from under /etc/apt/sources.list.d/
     #
     # 3. writing "deb file:///cdrom $(lsb_release -sc) main restricted"
-    #    to /etc/apt/sources.list.
+    #    to /etc/apt/sources.list.d/01sy-cdrom.list.
     #
     # 4. running "apt-get update" in the new overlay.
     #
@@ -248,7 +248,7 @@ class AptConfigurer:
             with contextlib.suppress(FileNotFoundError):
                 os.rename(
                     self.install_tree.p("etc/apt/sources.list"),
-                    self.install_tree.p("etc/apt/sources.list.d/original.list"),
+                    self.install_tree.p("etc/apt/sources.list.d/10sy-original.list"),
                 )
         else:
             proxy_path = self.install_tree.p("etc/apt/apt.conf.d/90curtin-aptproxy")
@@ -260,7 +260,7 @@ class AptConfigurer:
         codename = lsb_release(dry_run=self.app.opts.dry_run)["codename"]
 
         write_file(
-            self.install_tree.p("etc/apt/sources.list"),
+            self.install_tree.p("etc/apt/sources.list.d/01sy-cdrom.list"),
             f"deb [check-date=no] file:///cdrom {codename} main restricted\n",
             mode=0o644,
         )
@@ -328,7 +328,9 @@ class AptConfigurer:
 
         # The file only exists if we are online
         with contextlib.suppress(FileNotFoundError):
-            os.unlink(target_mnt.p("etc/apt/sources.list.d/original.list"))
+            os.unlink(target_mnt.p("etc/apt/sources.list.d/10sy-original.list"))
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(target_mnt.p("etc/apt/sources.list.d/01sy-cdrom.list"))
         with contextlib.suppress(FileNotFoundError):
             _restore_file("etc/apt/sources.list")
 
