@@ -13,8 +13,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import contextlib
 import io
+import pathlib
 import subprocess
+import tempfile
+from collections import namedtuple
 from unittest.mock import AsyncMock, Mock, patch
 
 from curtin.commands.extract import TrivialSourceHandler
@@ -31,6 +35,7 @@ from subiquity.server.apt import (
 from subiquity.server.dryrun import DRConfig
 from subiquitycore.tests import SubiTestCase
 from subiquitycore.tests.mocks import make_app
+from subiquitycore.tests.parameterized import parameterized
 from subiquitycore.utils import astart_command
 
 APT_UPDATE_SUCCESS = """\
@@ -136,6 +141,66 @@ class TestAptConfigurer(SubiTestCase):
         with patch(self.astart_sym, side_effect=astart_failure):
             with self.assertRaises(AptConfigCheckError):
                 await self.configurer.run_apt_config_check(output)
+
+    @staticmethod
+    @contextlib.contextmanager
+    def naked_apt_dir():
+        temp_dir = tempfile.TemporaryDirectory()
+        try:
+            d = pathlib.Path(temp_dir.name)
+
+            (d / "etc/apt").mkdir(parents=True)
+            (d / "etc/apt/apt.conf.d").mkdir()
+            (d / "etc/apt/preferences.d").mkdir()
+            (d / "etc/apt/sources.list.d").mkdir()
+
+            yield d
+        finally:
+            temp_dir.cleanup()
+
+    @parameterized.expand(
+        [
+            (False, "etc/apt/sources.list", False, False),
+            (True, "etc/apt/sources.list", True, False),
+            (False, "etc/apt/sources.list.d/ubuntu.sources", False, False),
+            (True, "etc/apt/sources.list.d/ubuntu.sources", True, True),
+            # If ubuntu.sources was removed because we're offline
+            (True, "etc/apt/sources.list.d/ubuntu.sources", True, False),
+            (False, "etc/apt/sources.list.d/10sy-original.list", True, False),
+            (False, "etc/apt/apt.conf.d/90curtin-aptproxy", False, False),
+            (True, "etc/apt/apt.conf.d/90curtin-aptproxy", True, True),
+            # If 90curtin-aptproxy was removed because we're offline
+            (True, "etc/apt/apt.conf.d/90curtin-aptproxy", False, True),
+            # Files installed by other packages
+            (True, "etc/apt/sources.list.d/oem-foobar-meta.list", True, False),
+        ]
+    )
+    async def test_deconfigure(
+        self, expect_found, path: str, in_installed, in_configured
+    ):
+        """Test if the relevant files are discarded or restored on deconfigured"""
+        with self.naked_apt_dir() as target_dir, self.naked_apt_dir() as configured_tree:
+            self.configurer.configured_tree = OverlayMountpoint(
+                mountpoint=str(configured_tree), lowers=[], upperdir=None
+            )
+
+            # This file must always be present
+            (target_dir / "etc/apt/sources.list.d/01sy-cdrom.list").touch(
+                exist_ok=False
+            )
+
+            if in_configured:
+                (configured_tree / path).touch(exist_ok=False)
+            if in_installed:
+                (target_dir / path).touch(exist_ok=False)
+
+            with patch("subiquity.server.apt.run_curtin_command"):
+                await self.configurer.deconfigure(context=None, target=str(target_dir))
+
+            self.assertEqual(expect_found, (target_dir / path).exists())
+            self.assertFalse(
+                (target_dir / "etc/apt/sources.list.d/01sy-cdrom.list").exists()
+            )
 
 
 class TestDRAptConfigurer(SubiTestCase):
