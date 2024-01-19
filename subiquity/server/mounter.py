@@ -52,11 +52,11 @@ class OverlayCleanupError(Exception):
 
 
 class _MountBase:
-    def p(self, *args: str) -> str:
+    def p(self, *args: Union[str, Path]) -> Path:
         for a in args:
-            if a.startswith("/"):
+            if Path(a).is_absolute():
                 raise Exception("no absolute paths here please")
-        return os.path.join(self.mountpoint, *args)
+        return str(Path(self.mountpoint).joinpath(*args))
 
     def write(self, path, content):
         with open(self.p(path), "w") as fp:
