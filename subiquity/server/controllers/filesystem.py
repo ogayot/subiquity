@@ -1004,10 +1004,8 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
             await self.configured()
         return self._done_response()
 
-    async def reset_POST(self, context, request) -> StorageResponse:
-        log.info("Resetting Filesystem model")
-        self.model.reset()
-        return await self.GET(context)
+    async def reset_POST(self) -> StorageResponse:
+        raise NotImplementedError
 
     async def has_rst_GET(self) -> bool:
         search = "/sys/module/ahci/drivers/pci:ahci/*/remapped_nvme"
