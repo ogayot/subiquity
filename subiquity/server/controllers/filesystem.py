@@ -998,11 +998,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
         )
 
     async def guided_POST(self, data: GuidedChoiceV2) -> StorageResponse:
-        log.debug(data)
-        await self.guided(data)
-        if not data.capability.supports_manual_customization():
-            await self.configured()
-        return self._done_response()
+        raise NotImplementedError
 
     async def reset_POST(self) -> StorageResponse:
         raise NotImplementedError
