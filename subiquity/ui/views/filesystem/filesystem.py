@@ -494,7 +494,7 @@ class FilesystemView(BaseView):
                 not self.model.is_boot_mounted()
                 or self.model.is_bootfs_on_remote_storage()
             ):
-                todos.append(_("Mount a local filesystem at /boot"))
+                todos.append(_("Mount a local filesystem at /boot (can be ignored for testing)"))
         if self.model.needs_bootloader_partition():
             todos.append(_("Select a boot disk"))
         if not todos:

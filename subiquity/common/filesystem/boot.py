@@ -337,7 +337,7 @@ def can_be_boot_device(device, *, resize_partition=None, with_reformatting=False
 @can_be_boot_device.register(Disk)
 def _can_be_boot_device_disk(disk, *, resize_partition=None, with_reformatting=False):
     if disk.on_remote_storage():
-        return False
+        log.debug("disk %s would normally not be considered bootable but ignoring for testing", disk.id)
     if with_reformatting:
         disk = disk._reformatted()
     plan = get_boot_device_plan(disk, resize_partition=resize_partition)

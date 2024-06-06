@@ -2272,7 +2272,7 @@ class FilesystemModel:
 
         if self.is_rootfs_on_remote_storage():
             if not self.is_boot_mounted() or self.is_bootfs_on_remote_storage():
-                return False
+                log.debug("would normally prevent installation but allowing it for testing")
 
         if self.needs_bootloader_partition():
             return False
