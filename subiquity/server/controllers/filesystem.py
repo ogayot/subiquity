@@ -22,7 +22,7 @@ import os
 import pathlib
 import subprocess
 import time
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import attr
 import pyudev
@@ -84,7 +84,6 @@ from subiquity.server.autoinstall import AutoinstallError
 from subiquity.server.controller import SubiquityController
 from subiquity.server.controllers.source import SEARCH_DRIVERS_AUTOINSTALL_DEFAULT
 from subiquity.server.mounter import Mounter
-from subiquity.server.nonreportable import NonReportableException
 from subiquity.server.snapdapi import (
     StorageEncryptionSupport,
     StorageSafety,
@@ -128,23 +127,13 @@ class NoSnapdSystemsOnSource(Exception):
     pass
 
 
-class NonReportableSVE(RecoverableError, NonReportableException):
-    """Non reportable storage value error"""
-
-
-class ReportableSVE(ValueError):
-    """Reportable storage value error"""
-
-    # TODO Inherit from RecoverableError going forward.
-
-
-# Depending on config, we will let the SVE fail on the server side
-StorageRecoverableError: Type[NonReportableSVE | ReportableSVE] = ReportableSVE
+class StorageRecoverableError(RecoverableError):
+    pass
 
 
 def set_user_error_reportable(reportable: bool) -> None:
     global StorageRecoverableError
-    StorageRecoverableError = ReportableSVE if reportable else NonReportableSVE
+    StorageRecoverableError.produce_crash_report = reportable
 
 
 @attr.s(auto_attribs=True)

@@ -15,4 +15,9 @@
 
 
 class RecoverableError(Exception):
-    """An error type that should not be treated as fatal."""
+    """An error type that can be treated as non-fatal when raised from a
+    request handler."""
+
+    # If this exception is uncaught in a request handler, what should we do.
+    # By default we produce a crash report, but one can change set it to False.
+    produce_crash_report = True
