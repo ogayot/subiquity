@@ -384,10 +384,11 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
             self._source_handler.cleanup()
             self._source_handler = None
 
-    async def _get_system(
-        self, variation_name, label, *, source_id: str
+    async def _maybe_get_system(
+        self, variation_name, label, *, source_id: str, in_critical_section: asyncio.Event
     ) -> Tuple[Optional[SystemDetails], bool]:
         async with self.get_system_lock:
+            in_critical_section.set()
             return await self._get_system_unsafe(variation_name, label, source_id=source_id)
 
     async def _get_system_unsafe(
@@ -515,10 +516,14 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
                 # after itself. However, it should be safe to call
                 # _get_system multiple times concurrently. There is a lock to
                 # prevent mount/unmounts from being done concurrently.
-                # Ideally though, if _get_system hasn't acquired the lock yet,
-                # we could cancel it.
-                task = asyncio.create_task(self._get_system(name, label, source_id=catalog_entry.id))
-                system, in_live_layer = await asyncio.shield(task)
+                in_critical_section = asyncio.Event()
+                task = asyncio.create_task(self._maybe_get_system(name, label, source_id=catalog_entry.id, in_critical_section))
+                try:
+                    system, in_live_layer = await asyncio.shield(task)
+                except asyncio.CancelledError:
+                    if not in_critical_section.is_set():
+                        task.cancel()
+                    raise
 
             log.debug("got system %s for variation %s", system, name)
             if system is not None and len(system.volumes) > 0:
