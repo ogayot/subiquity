@@ -275,6 +275,8 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
 
     _configured = False
 
+    get_system_lock = asyncio.Lock()
+
     def __init__(self, app):
         self.ai_data = {}
         super().__init__(app)
@@ -383,6 +385,12 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
             self._source_handler = None
 
     async def _get_system(
+        self, variation_name, label
+    ) -> Tuple[Optional[SystemDetails], bool]:
+        async with self.get_system_lock:
+            return await self._get_system_unsafe(variation_name, label)
+
+    async def _get_system_unsafe(
         self, variation_name, label
     ) -> Tuple[Optional[SystemDetails], bool]:
         """Return system information for a given system label.
@@ -502,7 +510,16 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
             system = None
             label = variation.snapd_system_label
             if label is not None:
-                system, in_live_layer = await self._get_system(name, label)
+                # We do not want _get_system to be cancelled if
+                # _examine_systems is cancelled because it needs to cleanup
+                # after itself. However, it should be safe to call
+                # _get_system multiple times concurrently. There is a lock to
+                # prevent mount/unmounts from being done concurrently.
+                # Ideally though, if _get_system hasn't acquired the lock yet,
+                # we could cancel it.
+                task = asyncio.create_task(self._get_system(name, label))
+                system, in_live_layer = await asyncio.shield(task)
+
             log.debug("got system %s for variation %s", system, name)
             if system is not None and len(system.volumes) > 0:
                 if not self.app.opts.enhanced_secureboot:
