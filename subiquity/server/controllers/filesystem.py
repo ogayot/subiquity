@@ -352,8 +352,8 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
         await super().configured()
         self.stop_monitor()
 
-    async def _mount_systems_dir(self, variation_name):
-        self._source_handler = self.app.controllers.Source.get_handler(variation_name)
+    async def _mount_systems_dir(self, variation_name, *, source_id: Optional[str] = None):
+        self._source_handler = self.app.controllers.Source.get_handler(variation_name, source_id=source_id)
         if self._source_handler is None:
             raise NoSnapdSystemsOnSource
         source_path = self._source_handler.setup()
@@ -385,13 +385,13 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
             self._source_handler = None
 
     async def _get_system(
-        self, variation_name, label
+        self, variation_name, label, *, source_id: str
     ) -> Tuple[Optional[SystemDetails], bool]:
         async with self.get_system_lock:
-            return await self._get_system_unsafe(variation_name, label)
+            return await self._get_system_unsafe(variation_name, label, source_id=source_id)
 
     async def _get_system_unsafe(
-        self, variation_name, label
+        self, variation_name, label, *, source_id: str
     ) -> Tuple[Optional[SystemDetails], bool]:
         """Return system information for a given system label.
 
@@ -410,7 +410,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
                 raise
         else:
             try:
-                await self._mount_systems_dir(variation_name)
+                await self._mount_systems_dir(variation_name, source_id=source_id)
             except NoSnapdSystemsOnSource:
                 return None, False
             try:
@@ -517,7 +517,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
                 # prevent mount/unmounts from being done concurrently.
                 # Ideally though, if _get_system hasn't acquired the lock yet,
                 # we could cancel it.
-                task = asyncio.create_task(self._get_system(name, label))
+                task = asyncio.create_task(self._get_system(name, label, source_id=catalog_entry.id))
                 system, in_live_layer = await asyncio.shield(task)
 
             log.debug("got system %s for variation %s", system, name)
