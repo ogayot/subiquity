@@ -441,7 +441,9 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
                 # lock to prevent mount/unmounts from being done concurrently.
                 # Ideally though, if _system_getter hasn't acquired the lock
                 # yet, we could cancel it.
-                task = asyncio.create_task(self._system_getter.get(name, label))
+                task = asyncio.create_task(
+                    self._system_getter.get(name, label, source_id=catalog_entry.id)
+                )
                 system, in_live_layer = await asyncio.shield(task)
 
             log.debug("got system %s for variation %s", system, name)
