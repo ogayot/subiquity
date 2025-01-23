@@ -297,7 +297,7 @@ class FilesystemManipulator:
                 size_change = new_size - partition.size
                 if size_change > gap_size:
                     raise Exception("partition size too large")
-                if not self.can_resize_partition(partition):
+                if partition["wipe"] is None and not self.can_resize_partition(partition):
                     raise Exception("partition cannot support resize")
                 partition.size = new_size
                 partition.resize = True
