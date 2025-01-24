@@ -18,7 +18,7 @@ import os
 import shlex
 from typing import List, Sequence, Union
 
-import attr
+import attrs
 from systemd import journal
 
 from subiquity.server.controller import NonInteractiveController
@@ -26,7 +26,7 @@ from subiquitycore.context import with_context
 from subiquitycore.utils import arun_command
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class Command:
     """Represents a command, specified either as a list of arguments or as a
     single string."""

@@ -16,12 +16,12 @@
 import logging
 from typing import Any, Dict, List, Optional, Union
 
-import attr
+import attrs
 
 log = logging.getLogger("subiquity.models.oem")
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class OEMMetaPkg:
     name: str
     wants_oem_kernel: bool

@@ -19,7 +19,7 @@ from typing import Optional
 from unittest import mock
 from unittest.mock import Mock
 
-import attr
+import attrs
 import yaml
 
 from subiquity.common.filesystem import gaps
@@ -117,10 +117,10 @@ class TestDehumanizeSize(unittest.TestCase):
                 self.assertEqual(expected_error, actual_error)
 
 
-@attr.s
+@attrs.define
 class FakeDev:
-    size = attr.ib()
-    id = attr.ib(default="id")
+    size = attrs.field()
+    id = attrs.field(default="id")
 
 
 class TestRoundRaidSize(unittest.TestCase):
@@ -130,14 +130,14 @@ class TestRoundRaidSize(unittest.TestCase):
         )
 
 
-@attr.s
+@attrs.define
 class FakeStorageInfo:
-    name = attr.ib(default=None)
-    size = attr.ib(default=None)
-    free = attr.ib(default=None)
-    serial = attr.ib(default=None)
-    model = attr.ib(default=None)
-    raw = attr.ib(default=attr.Factory(dict))
+    name = attrs.field(default=None)
+    size = attrs.field(default=None)
+    free = attrs.field(default=None)
+    serial = attrs.field(default=None)
+    model = attrs.field(default=None)
+    raw = attrs.field(default=attrs.Factory(dict))
 
 
 def make_model(bootloader=None, storage_version=None, supports_nvme_tcp_booting=False):

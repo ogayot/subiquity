@@ -15,7 +15,7 @@
 
 from typing import List, Optional, TypedDict
 
-import attr
+import attrs
 import yaml
 
 
@@ -45,7 +45,7 @@ class SSHImport(TypedDict, total=True):
     username: str
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class DRConfig:
     """Configuration for dry-run-only executions.
     All variables here should have default values ; to indicate the behavior we

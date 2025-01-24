@@ -18,7 +18,7 @@ import os
 import pwd
 from typing import Dict, Optional, Sequence, Tuple
 
-import attr
+import attrs
 
 from subiquity.common.apidef import API
 from subiquity.common.resources import resource_path
@@ -192,7 +192,7 @@ class KeyboardController(SubiquityController):
             await self.set_keyboard()
 
     def make_autoinstall(self):
-        return attr.asdict(self.model.setting)
+        return attrs.asdict(self.model.setting)
 
     async def set_keyboard(self):
         path = self.model.config_path

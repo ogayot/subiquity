@@ -17,7 +17,7 @@ import logging
 import pathlib
 from typing import Optional
 
-import attr
+import attrs
 from urwid import Text, connect_signal
 
 from subiquity.common.types.storage import (
@@ -133,7 +133,7 @@ def summarize_device(disk):
     return rows
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class TPMChoice:
     enabled: bool
     default: bool

@@ -21,7 +21,7 @@ import pathlib
 import shlex
 import sys
 
-import attr
+import attrs
 
 from subiquity.server.controllers.filesystem import set_user_error_reportable
 from subiquitycore.log import setup_logger
@@ -29,11 +29,11 @@ from subiquitycore.log import setup_logger
 from .common import LOGDIR, setup_environment
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class CommandLineParams:
     _raw: str
-    _tokens: set = attr.Factory(set)
-    _values: dict = attr.Factory(dict)
+    _tokens: set = attrs.Factory(set)
+    _values: dict = attrs.Factory(dict)
 
     @classmethod
     def from_cmdline(cls, cmdline):

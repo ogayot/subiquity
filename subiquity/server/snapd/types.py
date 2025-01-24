@@ -16,18 +16,18 @@
 import enum
 from typing import Dict, List, Optional
 
-import attr
+import attrs
 
 from subiquity.common.serialize import NonExhaustive, named_field
 
 RFC3339 = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 
-def date_field(name=None, default=attr.NOTHING):
+def date_field(name=None, default=attrs.NOTHING):
     metadata = {"time_fmt": RFC3339}
     if name is not None:
         metadata.update(named_field(name).metadata)
-    return attr.ib(metadata=metadata, default=default)
+    return attrs.field(metadata=metadata, default=default)
 
 
 ChangeID = str
@@ -42,7 +42,7 @@ def _underscore_to_hyphen(cls, fields):
 
 
 def snapdtype(cls):
-    return attr.s(
+    return attrs.define(
         auto_attribs=True, kw_only=True, field_transformer=_underscore_to_hyphen
     )(cls)
 
@@ -137,7 +137,7 @@ class VolumeStructure:
     id: Optional[str] = None
     filesystem: str = ""
     content: Optional[List[VolumeContent]] = None
-    update: VolumeUpdate = attr.Factory(VolumeUpdate)
+    update: VolumeUpdate = attrs.Factory(VolumeUpdate)
 
     def gpt_part_type_uuid(self):
         if "," in self.type:
@@ -160,7 +160,7 @@ class OnVolumeStructure(VolumeStructure):
 
     @classmethod
     def from_volume_structure(cls, vs: VolumeStructure):
-        return cls(**attr.asdict(vs, recurse=False))
+        return cls(**attrs.asdict(vs, recurse=False))
 
 
 @snapdtype
@@ -169,7 +169,7 @@ class OnVolume(Volume):
 
     @classmethod
     def from_volume(cls, v: Volume):
-        kw = attr.asdict(v, recurse=False)
+        kw = attrs.asdict(v, recurse=False)
         kw["structure"] = [
             OnVolumeStructure.from_volume_structure(vs) for vs in v.structure
         ]
@@ -208,13 +208,13 @@ class StorageEncryption:
 class SystemDetails:
     label: str
     current: bool = False
-    volumes: Dict[str, Volume] = attr.Factory(dict)
+    volumes: Dict[str, Volume] = attrs.Factory(dict)
     storage_encryption: Optional[StorageEncryption] = None
 
 
 @snapdtype
 class SystemsResponse:
-    systems: List[SystemDetails] = attr.Factory(list)
+    systems: List[SystemDetails] = attrs.Factory(list)
 
 
 class SystemAction(enum.Enum):
@@ -235,4 +235,4 @@ class SystemActionRequest:
 
 @snapdtype
 class SystemActionResponse:
-    encrypted_devices: Dict[NonExhaustive[Role], str] = attr.Factory(dict)
+    encrypted_devices: Dict[NonExhaustive[Role], str] = attrs.Factory(dict)

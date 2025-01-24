@@ -17,7 +17,7 @@ import contextlib
 import unittest
 from unittest import mock
 
-import attr
+import attrs
 
 from subiquity.common.filesystem import boot, gaps, sizes
 from subiquity.common.filesystem.actions import DeviceAction
@@ -45,7 +45,7 @@ def make_manipulator_and_disk(bootloader=None):
     return manipulator, make_disk(manipulator.model)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class MoveResize:
     part: Partition
     offset: int
@@ -64,7 +64,7 @@ def Unchanged(part):
     return MoveResize(part, 0, 0)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class Create:
     offset: int
     size: int

@@ -13,10 +13,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import attr
+import attrs
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class TargetPkg:
     name: str
     # Some packages are not present in the pool and require a working network

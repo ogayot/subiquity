@@ -17,7 +17,7 @@ import functools
 import logging
 from typing import List, Tuple
 
-import attr
+import attrs
 
 from subiquity.common.types.storage import GapUsable
 from subiquity.models.filesystem import (
@@ -35,7 +35,7 @@ log = logging.getLogger("subiquity.common.filesystem.gaps")
 
 
 # should also set on_setattr=None with attrs 20.1.0
-@attr.s(auto_attribs=True, frozen=True)
+@attrs.define(auto_attribs=True, frozen=True)
 class Gap:
     device: object
     offset: int

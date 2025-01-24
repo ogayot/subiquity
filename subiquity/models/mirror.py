@@ -78,7 +78,7 @@ import logging
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Union
 from urllib import parse
 
-import attr
+import attrs
 from curtin.commands.apt_config import (
     PORTS_ARCHES,
     PORTS_MIRRORS,
@@ -128,13 +128,13 @@ DEFAULT = {
 }
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class BasePrimaryEntry(abc.ABC):
     """Base class to represent an entry from the 'primary' autoinstall
     section. A BasePrimaryEntry is expected to have a URI and therefore can be
     used as a primary candidate."""
 
-    parent: "MirrorModel" = attr.ib(kw_only=True)
+    parent: "MirrorModel" = attrs.field(kw_only=True)
 
     def stage(self) -> None:
         self.parent.primary_staged = self
@@ -152,7 +152,7 @@ class BasePrimaryEntry(abc.ABC):
         specified."""
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class PrimaryEntry(BasePrimaryEntry):
     """Represents a single primary mirror candidate; which can be converted
     to/from an entry of the 'apt->mirror-selection->primary' autoinstall
@@ -163,7 +163,7 @@ class PrimaryEntry(BasePrimaryEntry):
     # When arches is None, it is assumed that the mirror is compatible with the
     # current CPU architecture.
     arches: Optional[List[str]] = None
-    country_mirror: bool = attr.ib(kw_only=True, default=False)
+    country_mirror: bool = attrs.field(kw_only=True, default=False)
 
     @classmethod
     def from_config(cls, config: Any, parent: "MirrorModel") -> "PrimaryEntry":

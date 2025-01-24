@@ -27,7 +27,7 @@ from typing import Optional
 import apport
 import apport.crashdb
 import apport.hookutils
-import attr
+import attrs
 import bson
 import requests
 import urwid
@@ -39,15 +39,15 @@ from subiquitycore.file_util import write_file
 log = logging.getLogger("subiquity.common.errorreport")
 
 
-@attr.s(eq=False)
+@attrs.define(eq=False)
 class Upload(metaclass=urwid.MetaSignals):
     signals = ["progress"]
 
-    bytes_to_send = attr.ib()
-    bytes_sent = attr.ib(default=0)
-    pipe_r = attr.ib(default=None)
-    pipe_w = attr.ib(default=None)
-    cancelled = attr.ib(default=False)
+    bytes_to_send = attrs.field()
+    bytes_sent = attrs.field(default=0)
+    pipe_r = attrs.field(default=None)
+    pipe_w = attrs.field(default=None)
+    cancelled = attrs.field(default=False)
 
     def start(self):
         self.pipe_r, self.pipe_w = os.pipe()
@@ -70,20 +70,20 @@ class Upload(metaclass=urwid.MetaSignals):
         os.close(self.pipe_r)
 
 
-@attr.s(eq=False)
+@attrs.define(eq=False)
 class ErrorReport(metaclass=urwid.MetaSignals):
     signals = ["changed"]
 
-    reporter: "ErrorReporter" = attr.ib()
-    base = attr.ib()
-    pr = attr.ib()
-    state: ErrorReportState = attr.ib()
-    _file = attr.ib()
-    _context = attr.ib()
-    _info_task = attr.ib(default=None)
+    reporter: "ErrorReporter" = attrs.field()
+    base = attrs.field()
+    pr = attrs.field()
+    state: ErrorReportState = attrs.field()
+    _file = attrs.field()
+    _context = attrs.field()
+    _info_task = attrs.field(default=None)
 
-    meta = attr.ib(default=attr.Factory(dict))
-    uploader = attr.ib(default=None)
+    meta = attrs.field(default=attrs.Factory(dict))
+    uploader = attrs.field(default=None)
 
     @classmethod
     def new(cls, reporter: "ErrorReporter", kind: ErrorReportKind):

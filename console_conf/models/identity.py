@@ -14,16 +14,16 @@
 
 import logging
 
-import attr
+import attrs
 
 log = logging.getLogger("console_conf.models.identity")
 
 
-@attr.s
+@attrs.define
 class User(object):
-    realname = attr.ib()
-    username = attr.ib()
-    homedir = attr.ib(default=None)
+    realname = attrs.field()
+    username = attrs.field()
+    homedir = attrs.field(default=None)
 
 
 class IdentityModel(object):

@@ -3,7 +3,7 @@ import typing
 import unittest
 from unittest import mock
 
-import attr
+import attrs
 import urwid
 
 from subiquitycore.controllers.network import NetworkController
@@ -27,9 +27,9 @@ valid_data = {
 def create_test_instance(cls, name=(), *, overrides={}):
     if ".".join(name) in overrides:
         return overrides[".".join(name)]
-    if attr.has(cls):
+    if attrs.has(cls):
         args = {}
-        for field in attr.fields(cls):
+        for field in attrs.fields(cls):
             args[field.name] = create_test_instance(
                 field.type, name + (field.name,), overrides=overrides
             )

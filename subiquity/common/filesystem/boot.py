@@ -19,7 +19,7 @@ import logging
 import typing
 from typing import Any, Optional
 
-import attr
+import attrs
 
 from subiquity.common.filesystem import gaps, sizes
 from subiquity.models.filesystem import Bootloader, Disk, Partition, Raid, align_up
@@ -72,14 +72,14 @@ class MakeBootDevicePlan(abc.ABC):
         pass
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class CreatePartPlan(MakeBootDevicePlan):
     """Create a partition on the device."""
 
     gap: gaps.Gap
 
-    spec: dict = attr.ib(factory=dict)
-    args: dict = attr.ib(factory=dict)
+    spec: dict = attrs.field(factory=dict)
+    args: dict = attrs.field(factory=dict)
 
     @typing.override
     def new_partition_count(self) -> int:
@@ -93,11 +93,11 @@ def _can_resize_part(inst, field, part):
     assert not part.preserve or inst.allow_resize_preserved
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class ResizePlan(MakeBootDevicePlan):
     """Resize a partition."""
 
-    part: object = attr.ib(validator=_can_resize_part)
+    part: object = attrs.field(validator=_can_resize_part)
     size_delta: int = 0
     allow_resize_preserved: bool = False
 
@@ -112,11 +112,11 @@ def _no_preserve_parts(inst, field, parts):
         assert not part.preserve
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class SlidePlan(MakeBootDevicePlan):
     """Move a collection of partitions by the same amount."""
 
-    parts: list = attr.ib(validator=_no_preserve_parts)
+    parts: list = attrs.field(validator=_no_preserve_parts)
     offset_delta: int = 0
 
     def apply(self, manipulator):
@@ -124,7 +124,7 @@ class SlidePlan(MakeBootDevicePlan):
             part.offset += self.offset_delta
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class SetAttrPlan(MakeBootDevicePlan):
     """Set an attribute on an object."""
 
@@ -136,7 +136,7 @@ class SetAttrPlan(MakeBootDevicePlan):
         setattr(self.device, self.attr, self.val)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class MountBootEfiPlan(MakeBootDevicePlan):
     """Mount a partition at /boot/efi."""
 
@@ -146,7 +146,7 @@ class MountBootEfiPlan(MakeBootDevicePlan):
         manipulator._mount_esp(self.part)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class NoOpBootPlan(MakeBootDevicePlan):
     """Do nothing, successfully"""
 
@@ -154,7 +154,7 @@ class NoOpBootPlan(MakeBootDevicePlan):
         pass
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class MultiStepPlan(MakeBootDevicePlan):
     """Execute several MakeBootDevicePlans in sequence."""
 
@@ -379,7 +379,7 @@ def is_esp(device):
 
 @is_esp.register(Partition)
 def _is_esp_partition(partition):
-    new_disk = attr.evolve(partition.device)
+    new_disk = attrs.evolve(partition.device)
     new_disk._partitions = []
     if not can_be_boot_device(new_disk, with_reformatting=True):
         return False

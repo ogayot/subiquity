@@ -17,7 +17,7 @@ import logging
 import re
 from typing import Set
 
-import attr
+import attrs
 
 from subiquity.common.apidef import API
 from subiquity.common.resources import resource_path
@@ -99,7 +99,7 @@ class IdentityController(SubiquityController):
     def make_autoinstall(self):
         if self.model.user is None:
             return {}
-        r = attr.asdict(self.model.user)
+        r = attrs.asdict(self.model.user)
         r["hostname"] = self.model.hostname
         return r
 

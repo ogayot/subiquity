@@ -15,7 +15,6 @@
 
 from unittest import TestCase
 
-import attr
 import attrs
 
 from subiquity.server.snapd.types import snapdtype
@@ -34,7 +33,7 @@ class TestMetadataMerge(TestCase):
     def test_merge(self, initial, expected):
         @snapdtype
         class MetadataMerge:
-            foo_bar: int = attr.ib(metadata=initial)
+            foo_bar: int = attrs.field(metadata=initial)
 
         [field] = attrs.fields(MetadataMerge)
         self.assertEqual(expected, field.metadata)

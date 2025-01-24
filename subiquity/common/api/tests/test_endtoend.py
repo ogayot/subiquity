@@ -18,7 +18,7 @@ import functools
 import unittest
 
 import aiohttp
-import attr
+import attrs
 from aiohttp import web
 
 from subiquity.common.api.client import make_client
@@ -148,11 +148,11 @@ class TestEndToEnd(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(await client.POST({"key": "value"}), "value")
 
     async def test_typed(self):
-        @attr.s(auto_attribs=True)
+        @attrs.define(auto_attribs=True)
         class In:
             val: int
 
-        @attr.s(auto_attribs=True)
+        @attrs.define(auto_attribs=True)
         class Out:
             doubled: int
 

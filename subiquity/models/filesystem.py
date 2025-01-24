@@ -39,7 +39,7 @@ from typing import (
     Union,
 )
 
-import attr
+import attrs
 import more_itertools
 from curtin import storage_config
 from curtin.block import partition_kname
@@ -87,7 +87,7 @@ MatchDirective = TypedDict(
 )
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class RecoveryKeyHandler:
     # Where to store the key on the live system
     live_location: Optional[pathlib.Path]
@@ -95,7 +95,7 @@ class RecoveryKeyHandler:
     # be prefixed.
     backup_location: pathlib.Path
 
-    _key: Optional[str] = attr.ib(repr=False, default=None)
+    _key: Optional[str] = attrs.field(repr=False, default=None)
 
     @classmethod
     def from_post_data(
@@ -178,7 +178,7 @@ def _set_backlinks(obj):
             i += 1
         obj.id = val
     obj._m._all_ids.add(obj.id)
-    for field in attr.fields(type(obj)):
+    for field in attrs.fields(type(obj)):
         backlink = field.metadata.get("backlink")
         if backlink is None:
             continue
@@ -198,7 +198,7 @@ def _set_backlinks(obj):
 
 
 def _remove_backlinks(obj):
-    for field in attr.fields(type(obj)):
+    for field in attrs.fields(type(obj)):
         backlink = field.metadata.get("backlink")
         if backlink is None:
             continue
@@ -222,7 +222,7 @@ _type_to_cls = {}
 
 def fsobj__repr(obj):
     args = []
-    for f in attr.fields(type(obj)):
+    for f in attrs.fields(type(obj)):
         if f.name.startswith("_"):
             continue
         v = getattr(obj, f.name)
@@ -258,12 +258,12 @@ def fsobj(typ):
             c._post_inits.append(class_post_init)
         c._post_inits.append(_set_backlinks)
         c.type = attributes.const(typ)
-        c.id = attr.ib(default=None)
-        c._m = attr.ib(repr=None, default=None)
+        c.id = attrs.field(default=None)
+        c._m = attrs.field(repr=None, default=None)
         c.__annotations__["id"] = str
         c.__annotations__["_m"] = "FilesystemModel"
         c.__annotations__["type"] = str
-        c = attr.s(eq=False, repr=False, auto_attribs=True, kw_only=True)(c)
+        c = attrs.define(eq=False, repr=False, auto_attribs=True, kw_only=True)(c)
         c.__repr__ = fsobj__repr
         _type_to_cls[typ] = c
         return c
@@ -276,7 +276,7 @@ def dependencies(obj):
         dasd = obj.dasd()
         if dasd:
             yield dasd
-    for f in attr.fields(type(obj)):
+    for f in attrs.fields(type(obj)):
         v = getattr(obj, f.name)
         if not v:
             continue
@@ -291,7 +291,7 @@ def reverse_dependencies(obj):
         disk = obj._m._one(type="disk", device_id=obj.device_id)
         if disk:
             yield disk
-    for f in attr.fields(type(obj)):
+    for f in attrs.fields(type(obj)):
         if not f.metadata.get("is_backlink", False):
             continue
         v = getattr(obj, f.name)
@@ -308,12 +308,12 @@ def is_logical_partition(obj):
         return False
 
 
-@attr.s(eq=False)
+@attrs.define(eq=False)
 class RaidLevel:
-    name = attr.ib()
-    value = attr.ib()
-    min_devices = attr.ib()
-    supports_spares = attr.ib(default=True)
+    name = attrs.field()
+    value = attrs.field()
+    min_devices = attrs.field()
+    supports_spares = attrs.field(default=True)
 
 
 raidlevels = [
@@ -506,33 +506,33 @@ def _conv_size(s):
 
 
 class attributes:
-    # Just a namespace to hang our wrappers around attr.ib() off.
+    # Just a namespace to hang our wrappers around attrs.field() off.
 
     @staticmethod
-    def ref(*, backlink=None, default=attr.NOTHING):
+    def ref(*, backlink=None, default=attrs.NOTHING):
         metadata = {"ref": True}
         if backlink:
             metadata["backlink"] = backlink
-        return attr.ib(metadata=metadata, default=default)
+        return attrs.field(metadata=metadata, default=default)
 
     @staticmethod
-    def reflist(*, backlink=None, default=attr.NOTHING):
+    def reflist(*, backlink=None, default=attrs.NOTHING):
         metadata = {"reflist": True}
         if backlink:
             metadata["backlink"] = backlink
-        return attr.ib(metadata=metadata, default=default)
+        return attrs.field(metadata=metadata, default=default)
 
     @staticmethod
     def backlink(*, default=None):
-        return attr.ib(init=False, default=default, metadata={"is_backlink": True})
+        return attrs.field(init=False, default=default, metadata={"is_backlink": True})
 
     @staticmethod
     def const(value):
-        return attr.ib(default=value)
+        return attrs.field(default=value)
 
     @staticmethod
     def size(default=None):
-        return attr.ib(converter=_conv_size, default=None)
+        return attrs.field(converter=_conv_size, default=None)
 
     @staticmethod
     def ptable():
@@ -541,16 +541,16 @@ class attributes:
                 val = "msdos"
             return val
 
-        return attr.ib(default=None, converter=conv)
+        return attrs.field(default=None, converter=conv)
 
     @staticmethod
-    def for_api(*, default=attr.NOTHING):
-        return attr.ib(default=default, metadata={"for_api": True})
+    def for_api(*, default=attrs.NOTHING):
+        return attrs.field(default=default, metadata={"for_api": True})
 
 
 def asdict(inst, *, for_api: bool):
     r = collections.OrderedDict()
-    for field in attr.fields(type(inst)):
+    for field in attrs.fields(type(inst)):
         metadata = field.metadata
         if not for_api or not metadata.get("for_api", False):
             if field.name.startswith("_"):
@@ -580,7 +580,7 @@ def asdict(inst, *, for_api: bool):
 # in the FilesystemModel or FilesystemController classes.
 
 
-@attr.s(eq=False)
+@attrs.define(eq=False)
 class _Formattable(ABC):
     # Base class for anything that can be formatted and mounted,
     # e.g. a disk or a RAID or a partition.
@@ -641,7 +641,7 @@ class _Formattable(ABC):
 GPT_OVERHEAD = 2 * (1 << 20)
 
 
-@attr.s(eq=False)
+@attrs.define(eq=False)
 class _Device(_Formattable, ABC):
     # Anything that can have partitions, e.g. a disk or a RAID.
 
@@ -661,19 +661,19 @@ class _Device(_Formattable, ABC):
         pass
 
     # [Partition]
-    _partitions: List["Partition"] = attributes.backlink(default=attr.Factory(list))
+    _partitions: List["Partition"] = attributes.backlink(default=attrs.Factory(list))
 
     def _reformatted(self):
         # Return a ephemeral copy of the device with as many partitions
         # deleted as possible.
-        new_disk = attr.evolve(self)
+        new_disk = attrs.evolve(self)
         new_disk._partitions = [p for p in self.partitions() if p._is_in_use]
         return new_disk
 
     def _excluding_partition(self, partition: "Partition") -> Self:
         """Return an ephemeral copy of the device with the specific partition
         removed."""
-        new_disk = attr.evolve(self)
+        new_disk = attrs.evolve(self)
         new_disk._partitions = [p for p in self.partitions() if p is not partition]
         return new_disk
 
@@ -1031,9 +1031,9 @@ class Partition(_Formattable):
 @fsobj("raid")
 class Raid(_Device):
     name: str
-    raidlevel: str = attr.ib(converter=lambda x: raidlevels_by_value[x].value)
+    raidlevel: str = attrs.field(converter=lambda x: raidlevels_by_value[x].value)
     devices: Set[Union[Disk, Partition, "Raid"]] = attributes.reflist(
-        backlink="_constructed_device", default=attr.Factory(set)
+        backlink="_constructed_device", default=attrs.Factory(set)
     )
     _info: Optional[StorageInfo] = attributes.for_api(default=None)
     _has_in_use_partition = False
@@ -1049,7 +1049,7 @@ class Raid(_Device):
         return {"devices": [d.id for d in raid_device_sort(self.devices)]}
 
     spare_devices: Set[Union[Disk, Partition, "Raid"]] = attributes.reflist(
-        backlink="_constructed_device", default=attr.Factory(set)
+        backlink="_constructed_device", default=attrs.Factory(set)
     )
 
     preserve: bool = False
@@ -1058,7 +1058,7 @@ class Raid(_Device):
     metadata: Optional[str] = None
     _path: Optional[str] = None
     container: Optional["Raid"] = attributes.ref(backlink="_subvolumes", default=None)
-    _subvolumes: List["Raid"] = attributes.backlink(default=attr.Factory(list))
+    _subvolumes: List["Raid"] = attributes.backlink(default=attrs.Factory(list))
 
     @property
     def path(self):
@@ -1198,7 +1198,7 @@ LUKS_OVERHEAD = 16 * (2**20)
 @fsobj("dm_crypt")
 class DM_Crypt(_Formattable):
     volume: _Formattable = attributes.ref(backlink="_constructed_device")
-    key: Optional[str] = attr.ib(metadata={"redact": True}, default=None)
+    key: Optional[str] = attrs.field(metadata={"redact": True}, default=None)
     keyfile: Optional[str] = None
     options: Optional[List[str]] = None
     recovery_key: Optional[RecoveryKeyHandler] = None
@@ -1392,7 +1392,7 @@ class ZPool:
     pool: str
     mountpoint: str
 
-    _zfses: List["ZFS"] = attributes.backlink(default=attr.Factory(list))
+    _zfses: List["ZFS"] = attributes.backlink(default=attrs.Factory(list))
 
     # storage options on the pool
     pool_properties: Optional[dict] = None
@@ -1475,7 +1475,7 @@ def align_down(size, block_size=1 << 20):
     return size & ~(block_size - 1)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class PartitionAlignmentData:
     part_align: int
     min_gap_size: int
@@ -1967,7 +1967,7 @@ class FilesystemModel:
                 continue
             kw = {}
             field_names = set()
-            for f in attr.fields(c):
+            for f in attrs.fields(c):
                 n = f.name.lstrip("_")
                 field_names.add(f.name)
                 if n not in action:

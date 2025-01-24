@@ -21,7 +21,7 @@ import string
 import typing
 import unittest
 
-import attr
+import attrs
 
 from subiquity.common.serialize import (
     NonExhaustive,
@@ -31,7 +31,7 @@ from subiquity.common.serialize import (
 )
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class Data:
     field1: str
     field2: int
@@ -41,7 +41,7 @@ class Data:
         return Data(random.choice(string.ascii_letters), random.randint(0, 1000))
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class Container:
     data: Data
     data_list: typing.List[Data]
@@ -54,7 +54,7 @@ class Container:
         )
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class OptionalAndDefault:
     int: int
     optional_int: typing.Optional[int]
@@ -166,9 +166,9 @@ class TestSerializer(CommonSerializerTests, unittest.TestCase):
     serializer = Serializer()
 
     def test_datetime(self):
-        @attr.s
+        @attrs.define
         class C:
-            d: datetime.datetime = attr.ib(metadata={"time_fmt": "%Y-%m-%d"})
+            d: datetime.datetime = attrs.field(metadata={"time_fmt": "%Y-%m-%d"})
 
         c = C(datetime.datetime(2022, 1, 1))
         self.assertSerialization(C, c, {"d": "2022-01-01"})
@@ -228,7 +228,7 @@ class TestSerializer(CommonSerializerTests, unittest.TestCase):
         self.assertEqual(serializer.deserialize(Data, serialized), data)
 
     def test_override_field_name(self):
-        @attr.s(auto_attribs=True)
+        @attrs.define(auto_attribs=True)
         class Object:
             x: int
             y: int = named_field("field-y")
@@ -239,20 +239,20 @@ class TestSerializer(CommonSerializerTests, unittest.TestCase):
         )
 
     def test_embedding(self):
-        @attr.s(auto_attribs=True)
+        @attrs.define(auto_attribs=True)
         class Base1:
             x: str
 
-        @attr.s(auto_attribs=True)
+        @attrs.define(auto_attribs=True)
         class Base2:
             b: Base1
 
-        @attr.s(auto_attribs=True)
+        @attrs.define(auto_attribs=True)
         class Derived1(Base1):
             y: int
 
-        @attr.s(auto_attribs=True)
-        @attr.s(auto_attribs=True)
+        @attrs.define(auto_attribs=True)
+        @attrs.define(auto_attribs=True)
         class Derived2(Base2):
             b: Derived1
             c: int
@@ -268,7 +268,7 @@ class TestSerializer(CommonSerializerTests, unittest.TestCase):
             self.serializer.serialize(str, 1)
         self.assertEqual(catcher.exception.path, "")
 
-        @attr.s(auto_attribs=True)
+        @attrs.define(auto_attribs=True)
         class Type:
             field1: str = named_field("field-1")
             field2: int

@@ -25,7 +25,7 @@ import subprocess
 import time
 from typing import Any, Callable, Dict, List, Optional, Sequence, Type, Union
 
-import attr
+import attrs
 import pyudev
 from curtin import swap
 from curtin.storage_config import ptable_part_type_to_flag
@@ -145,10 +145,10 @@ def set_user_error_reportable(reportable: bool) -> None:
     StorageRecoverableError = ReportableSVE if reportable else NonReportableSVE
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class CapabilityInfo:
-    allowed: List[GuidedCapability] = attr.Factory(list)
-    disallowed: List[GuidedDisallowedCapability] = attr.Factory(list)
+    allowed: List[GuidedCapability] = attrs.Factory(list)
+    disallowed: List[GuidedDisallowedCapability] = attrs.Factory(list)
 
     def combine(self, other: "CapabilityInfo") -> None:
         for allowed_cap in other.allowed:
@@ -200,11 +200,11 @@ class CapabilityInfo:
         self.disallow_if(lambda cap: True, reason, message)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class VariationInfo:
     name: str
     label: Optional[str]
-    capability_info: CapabilityInfo = attr.Factory(CapabilityInfo)
+    capability_info: CapabilityInfo = attrs.Factory(CapabilityInfo)
     min_size: Optional[int] = None
     system: Optional[SystemDetails] = None
     needs_systems_mount: bool = False

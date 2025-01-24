@@ -17,7 +17,7 @@ import itertools
 import os
 import os.path
 
-import attr
+import attrs
 
 from subiquity.models.kernel import KernelModel
 from subiquity.models.source import BridgeKernelReason, SourceModel
@@ -28,7 +28,7 @@ from subiquitycore.tests.mocks import make_app
 from subiquitycore.tests.parameterized import parameterized
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class BridgeTestScenario:
     bridge_reasons: list[BridgeKernelReason]
     detected_reasons: list[BridgeKernelReason]

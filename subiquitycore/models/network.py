@@ -19,7 +19,7 @@ from gettext import pgettext
 from socket import AF_INET, AF_INET6
 from typing import Dict, List, Optional
 
-import attr
+import attrs
 import yaml
 
 from subiquitycore import netplan
@@ -65,41 +65,41 @@ class DHCPState(enum.Enum):
     CONFIGURED = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class DHCPStatus:
     enabled: bool
     state: Optional[DHCPState]
     addresses: List[str]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class StaticConfig:
-    addresses: List[str] = attr.Factory(list)
+    addresses: List[str] = attrs.Factory(list)
     gateway: Optional[str] = None
-    nameservers: List[str] = attr.Factory(list)
-    searchdomains: List[str] = attr.Factory(list)
+    nameservers: List[str] = attrs.Factory(list)
+    searchdomains: List[str] = attrs.Factory(list)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class VLANConfig:
     id: int
     link: str
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class WLANConfig:
     ssid: Optional[str]
     psk: Optional[str]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class WLANStatus:
     config: WLANConfig
     scan_state: Optional[str]
     visible_ssids: List[str]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class BondConfig:
     interfaces: List[str]
     mode: str
@@ -121,7 +121,7 @@ class BondConfig:
         }
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class NetDevInfo:
     """All the information about a NetworkDev that the view code needs."""
 

@@ -12,7 +12,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import attr
+import attrs
 from urwid import (
     ACTIVATE,
     AttrMap,
@@ -102,15 +102,15 @@ class _ActionMenuDialog(WidgetWrap):
             return super().keypress(size, key)
 
 
-@attr.s
+@attrs.define
 class Action:
     # The label that is shown in the menu
-    label = attr.ib()
-    enabled = attr.ib()
+    label = attrs.field()
+    enabled = attrs.field()
     # The value passed along with the 'action' signal
-    value = attr.ib()
+    value = attrs.field()
     # Actions that open a dialog get a > at the end.
-    opens_dialog = attr.ib(default=False)
+    opens_dialog = attrs.field(default=False)
 
 
 class ActionMenu(PopUpLauncher):

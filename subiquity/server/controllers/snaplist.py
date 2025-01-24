@@ -17,7 +17,7 @@ import asyncio
 import logging
 from typing import List
 
-import attr
+import attrs
 import requests.exceptions
 
 from subiquity.common.apidef import API
@@ -192,7 +192,7 @@ class SnapListController(SubiquityController):
         self.loader.start()
 
     def make_autoinstall(self):
-        return [attr.asdict(sel) for sel in self.model.selections]
+        return [attrs.asdict(sel) for sel in self.model.selections]
 
     async def GET(self, wait: bool = False) -> SnapListResponse:
         if (

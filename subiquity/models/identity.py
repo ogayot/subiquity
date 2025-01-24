@@ -15,16 +15,16 @@
 
 import logging
 
-import attr
+import attrs
 
 log = logging.getLogger("subiquity.models.identity")
 
 
-@attr.s
+@attrs.define
 class User(object):
-    realname = attr.ib()
-    username = attr.ib()
-    password = attr.ib()
+    realname = attrs.field()
+    username = attrs.field()
+    password = attrs.field()
 
 
 class IdentityModel(object):

@@ -16,7 +16,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-import attr
+import attrs
 
 from subiquity.common.filesystem.boot import (
     CreatePartPlan,
@@ -69,14 +69,14 @@ class TestCanBeBootDevice(unittest.TestCase):
 
 class TestMakeBootDevicePlan(unittest.TestCase):
     @unittest.skipUnless(
-        hasattr(attr.validators, "disabled"),
-        "this test requires attr.validators.disabled context manager",
+        hasattr(attrs.validators, "disabled"),
+        "this test requires attrs.validators.disabled context manager",
     )
     def test_new_partition_count__single(self):
         self.assertEqual(1, CreatePartPlan(Mock()).new_partition_count())
-        with attr.validators.disabled():
+        with attrs.validators.disabled():
             self.assertEqual(0, ResizePlan(Mock()).new_partition_count())
-        with attr.validators.disabled():
+        with attrs.validators.disabled():
             self.assertEqual(0, SlidePlan(Mock()).new_partition_count())
         self.assertEqual(0, SetAttrPlan(Mock(), Mock(), Mock()).new_partition_count())
         self.assertEqual(0, MountBootEfiPlan(Mock()).new_partition_count())

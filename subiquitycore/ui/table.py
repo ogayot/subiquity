@@ -69,7 +69,7 @@ Example:
 import logging
 from collections import defaultdict
 
-import attr
+import attrs
 import urwid
 
 from subiquitycore.ui.container import Columns, ListBox, Pile, WidgetWrap
@@ -78,30 +78,30 @@ from subiquitycore.ui.width import widget_width
 log = logging.getLogger("subiquitycore.ui.table")
 
 
-@attr.s
+@attrs.define
 class ColSpec:
     """Details about a column."""
 
     # Columns with pack=True take as much space as they need. Colunms
     # with pack=False have the space remaining after pack=True columns
     # are sized allocated to them.
-    pack = attr.ib(default=True)
+    pack = attrs.field(default=True)
     # can_shrink means that this column will be rendered narrower than
     # its natural width if there is not enough space for all columns
     # to have their natural width.
-    can_shrink = attr.ib(default=False)
+    can_shrink = attrs.field(default=False)
     # min_width is the minimum width that will be considered to be the
     # columns natural width. If the column is shrinkable (or
     # pack=False) it might still be rendered narrower than this.
-    min_width = attr.ib(default=0)
+    min_width = attrs.field(default=0)
     # omittable means that this column can be omitted in an effort to
     # keep the width of a column with min_width set above that minimum
     # width.
-    omittable = attr.ib(default=False)
+    omittable = attrs.field(default=False)
     # rpad is the width of padding to the right of this column. None
     # means use the table's default spacing (if not the last column in
     # the row -- that gets no padding to the right by default).
-    rpad = attr.ib(default=None)
+    rpad = attrs.field(default=None)
 
 
 def _width(widths, user_indices):

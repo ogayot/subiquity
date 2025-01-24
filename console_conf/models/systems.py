@@ -15,7 +15,7 @@
 import json
 import logging
 
-import attr
+import attrs
 import jsonschema
 
 log = logging.getLogger("console_conf.models.systems")
@@ -168,13 +168,13 @@ class RecoverySystemsModel:
         return json.dump(choice, fp=chooser_output)
 
 
-@attr.s
+@attrs.define
 class RecoverySystem:
-    current = attr.ib()
-    label = attr.ib()
-    model = attr.ib()
-    brand = attr.ib()
-    actions = attr.ib()
+    current = attrs.field()
+    label = attrs.field()
+    model = attrs.field()
+    brand = attrs.field()
+    actions = attrs.field()
 
     def __eq__(self, other):
         return (
@@ -186,12 +186,12 @@ class RecoverySystem:
         )
 
 
-@attr.s
+@attrs.define
 class Brand:
-    ID = attr.ib()
-    username = attr.ib()
-    display_name = attr.ib()
-    validation = attr.ib()
+    ID = attrs.field()
+    username = attrs.field()
+    display_name = attrs.field()
+    validation = attrs.field()
 
     def __eq__(self, other):
         return (
@@ -202,11 +202,11 @@ class Brand:
         )
 
 
-@attr.s
+@attrs.define
 class SystemModel:
-    model = attr.ib()
-    brand_id = attr.ib()
-    display_name = attr.ib()
+    model = attrs.field()
+    brand_id = attrs.field()
+    display_name = attrs.field()
 
     def __eq__(self, other):
         return (
@@ -216,19 +216,19 @@ class SystemModel:
         )
 
 
-@attr.s
+@attrs.define
 class SystemAction:
-    title = attr.ib()
-    mode = attr.ib()
+    title = attrs.field()
+    mode = attrs.field()
 
     def __eq__(self, other):
         return self.title == other.title and self.mode == other.mode
 
 
-@attr.s
+@attrs.define
 class SelectedSystemAction:
-    system = attr.ib()
-    action = attr.ib()
+    system = attrs.field()
+    action = attrs.field()
 
     def __eq__(self, other):
         return self.system == other.system and self.action == other.action

@@ -19,11 +19,11 @@ import inspect
 import json
 import typing
 
-import attr
+import attrs
 
 
-def named_field(name, default=attr.NOTHING):
-    return attr.ib(metadata={"name": name}, default=default)
+def named_field(name, default=attrs.NOTHING):
+    return attrs.field(metadata={"name": name}, default=default)
 
 
 def _field_name(field):
@@ -50,7 +50,7 @@ class NonExhaustive(typing.Generic[E]):
     pass
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class SerializationContext:
     obj: typing.Any
     cur: typing.Any
@@ -65,7 +65,7 @@ class SerializationContext:
     def child(self, path, cur, metadata=None):
         if metadata is None:
             metadata = self.metadata
-        return attr.evolve(self, path=self.path + path, cur=cur, metadata=metadata)
+        return attrs.evolve(self, path=self.path + path, cur=cur, metadata=metadata)
 
     def error(self, message):
         raise SerializationError(self.obj, self.path, message)
@@ -138,7 +138,7 @@ class Serializer:
                 if context.cur is None:
                     return context.cur
                 return meth(args[0], context)
-        if all(attr.has(a) for a in args):
+        if all(attrs.has(a) for a in args):
             if context.serializing:
                 for a in args:
                     if isinstance(context.cur, a):
@@ -216,7 +216,7 @@ class Serializer:
 
     def _serialize_attr(self, annotation, context):
         serialized = []
-        for field in attr.fields(annotation):
+        for field in attrs.fields(annotation):
             serialized.append(
                 (
                     _field_name(field),
@@ -245,7 +245,7 @@ class Serializer:
             return None
         if annotation is inspect.Signature.empty or annotation is typing.Any:
             return context.cur
-        if attr.has(annotation):
+        if attrs.has(annotation):
             return self._serialize_attr(annotation, context)
         origin = getattr(annotation, "__origin__", None)
         if origin is not None:
@@ -274,7 +274,7 @@ class Serializer:
         if self.compact:
             context.assert_type(list)
             args = []
-            for field, value in zip(attr.fields(annotation), context.cur):
+            for field, value in zip(attrs.fields(annotation), context.cur):
                 args.append(
                     self._deserialize(
                         field.type,
@@ -285,7 +285,7 @@ class Serializer:
         else:
             context.assert_type(dict)
             args = {}
-            fields = {_field_name(field): field for field in attr.fields(annotation)}
+            fields = {_field_name(field): field for field in attrs.fields(annotation)}
             for key, value in context.cur.items():
                 if key not in fields and (key == "$type" or self.ignore_unknown_fields):
                     # Union types can contain a '$type' field that is not
@@ -312,7 +312,7 @@ class Serializer:
             return None
         if annotation is inspect.Signature.empty or annotation is typing.Any:
             return context.cur
-        if attr.has(annotation):
+        if attrs.has(annotation):
             return self._deserialize_attr(annotation, context)
         origin = getattr(annotation, "__origin__", None)
         if origin is not None:

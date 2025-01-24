@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """ Types defined in this module are deprecated and will at some point be
-replaced by `attr.s` structures or similar. """
+replaced by `attrs.define` structures or similar. """
 
 
 import typing

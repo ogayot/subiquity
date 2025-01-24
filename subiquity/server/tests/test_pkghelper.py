@@ -16,7 +16,7 @@
 from typing import Optional
 from unittest.mock import Mock, patch
 
-import attr
+import attrs
 
 from subiquity.server.pkghelper import (
     DryRunPackageInstaller,
@@ -29,7 +29,7 @@ from subiquitycore.tests.mocks import make_app
 
 
 class MockPackage:
-    @attr.s(auto_attribs=True)
+    @attrs.define(auto_attribs=True)
     class Candidate:
         uri: str
 

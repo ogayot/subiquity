@@ -21,7 +21,7 @@ configuration.
 """
 import logging
 
-import attr
+import attrs
 from urwid import Text, connect_signal
 
 from subiquity.common.filesystem import boot, gaps, labels
@@ -52,9 +52,9 @@ from .raid import RaidStretchy
 log = logging.getLogger("subiquity.ui.views.filesystem.filesystem")
 
 
-@attr.s
+@attrs.define
 class MountInfo:
-    mount = attr.ib(default=None)
+    mount = attrs.field(default=None)
 
     @property
     def path(self):

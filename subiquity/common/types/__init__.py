@@ -21,7 +21,7 @@ import enum
 import shlex
 from typing import Any, Dict, List, Optional, Union
 
-import attr
+import attrs
 
 from subiquity.server.nonreportable import NonReportableException
 from subiquitycore.models.network import NetDevInfo
@@ -46,7 +46,7 @@ class ErrorReportKind(enum.Enum):
     UNKNOWN = _("Unknown error")
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class ErrorReportRef:
     state: ErrorReportState
     base: str
@@ -55,7 +55,7 @@ class ErrorReportRef:
     oops_id: Optional[str]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class NonReportableError:
     cause: str
     message: str
@@ -98,7 +98,7 @@ class ApplicationState(enum.Enum):
     EXITED = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class ApplicationStatus:
     state: ApplicationState
     confirming_tty: str
@@ -117,13 +117,13 @@ class PasswordKind(enum.Enum):
     UNKNOWN = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class KeyFingerprint:
     keytype: str
     fingerprint: str
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class LiveSessionSSHInfo:
     username: str
     password_kind: PasswordKind
@@ -139,21 +139,21 @@ class RefreshCheckState(enum.Enum):
     UNAVAILABLE = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class RefreshStatus:
     availability: RefreshCheckState
     current_snap_version: str = ""
     new_snap_version: str = ""
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class StepPressKey:
     # "Press a key with one of the following symbols"
     symbols: List[str]
     keycodes: Dict[int, str]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class StepKeyPresent:
     # "Is this symbol present on your keyboard"
     symbol: str
@@ -161,7 +161,7 @@ class StepKeyPresent:
     no: str
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class StepResult:
     # "This is the autodetected layout"
     layout: str
@@ -171,7 +171,7 @@ class StepResult:
 AnyStep = Union[StepPressKey, StepKeyPresent, StepResult]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class KeyboardSetting:
     # This data structure represents a subset of the XKB options.
     # As explained in the XKB configuration guide, XkbLayout and
@@ -184,26 +184,26 @@ class KeyboardSetting:
     toggle: Optional[str] = None
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class KeyboardVariant:
     code: str
     name: str
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class KeyboardLayout:
     code: str
     name: str
     variants: List[KeyboardVariant]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class KeyboardSetup:
     setting: KeyboardSetting
     layouts: List[KeyboardLayout]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class SourceSelection:
     name: str
     description: str
@@ -213,14 +213,14 @@ class SourceSelection:
     default: bool
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class SourceSelectionAndSetting:
     sources: List[SourceSelection]
     current_id: str
     search_drivers: bool
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class ZdevInfo:
     id: str
     type: str
@@ -258,17 +258,17 @@ class PackageInstallState(enum.Enum):
     DONE = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class NetworkStatus:
     devices: List[NetDevInfo]
     wlan_support_install_state: PackageInstallState
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class IdentityData:
     realname: str = ""
     username: str = ""
-    crypted_password: str = attr.ib(default="", repr=False)
+    crypted_password: str = attrs.field(default="", repr=False)
     hostname: str = ""
 
 
@@ -280,14 +280,14 @@ class UsernameValidation(enum.Enum):
     TOO_LONG = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class SSHData:
     install_server: bool
     allow_pw: bool
-    authorized_keys: List[str] = attr.Factory(list)
+    authorized_keys: List[str] = attrs.Factory(list)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class SSHIdentity:
     """Represents a SSH identity (public key + fingerprint)."""
 
@@ -306,7 +306,7 @@ class SSHFetchIdStatus(enum.Enum):
     FINGERPRINT_ERROR = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class SSHFetchIdResponse:
     status: SSHFetchIdStatus
     identities: Optional[List[SSHIdentity]]
@@ -319,19 +319,19 @@ class SnapCheckState(enum.Enum):
     DONE = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class ChannelSnapInfo:
     channel_name: str
     revision: str
     confinement: str
     version: str
     size: int
-    released_at: datetime.datetime = attr.ib(
+    released_at: datetime.datetime = attrs.field(
         metadata={"time_fmt": "%Y-%m-%dT%H:%M:%S.%fZ"}
     )
 
 
-@attr.s(auto_attribs=True, eq=False)
+@attrs.define(auto_attribs=True, eq=False)
 class SnapInfo:
     name: str
     summary: str = ""
@@ -341,10 +341,10 @@ class SnapInfo:
     description: str = ""
     confinement: str = ""
     license: str = ""
-    channels: List[ChannelSnapInfo] = attr.Factory(list)
+    channels: List[ChannelSnapInfo] = attrs.Factory(list)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class DriversResponse:
     """Response to GET request to drivers.
     :install: tells whether third-party drivers will be installed (if any is
@@ -362,51 +362,51 @@ class DriversResponse:
     search_drivers: bool
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class OEMResponse:
     metapackages: Optional[List[str]]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class CodecsData:
     install: bool
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class DriversPayload:
     install: bool
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class SnapSelection:
     name: str
     channel: str
     classic: bool = False
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class SnapListResponse:
     status: SnapCheckState
-    snaps: List[SnapInfo] = attr.Factory(list)
-    selections: List[SnapSelection] = attr.Factory(list)
+    snaps: List[SnapInfo] = attrs.Factory(list)
+    selections: List[SnapSelection] = attrs.Factory(list)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class TimeZoneInfo:
     timezone: str
     from_geoip: bool
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class UbuntuProInfo:
-    token: str = attr.ib(repr=False)
+    token: str = attrs.field(repr=False)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class UbuntuProResponse:
     """Response to GET request to /ubuntu_pro"""
 
-    token: str = attr.ib(repr=False)
+    token: str = attrs.field(repr=False)
     has_network: bool
 
 
@@ -417,14 +417,14 @@ class UbuntuProCheckTokenStatus(enum.Enum):
     UNKNOWN_ERROR = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class UbuntuProGeneralInfo:
     eol_esm_year: Optional[int]
     universe_packages: int
     main_packages: int
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class UPCSInitiateResponse:
     """Response to Ubuntu Pro contract selection initiate request."""
 
@@ -437,7 +437,7 @@ class UPCSWaitStatus(enum.Enum):
     TIMEOUT = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class UPCSWaitResponse:
     """Response to Ubuntu Pro contract selection wait request."""
 
@@ -446,14 +446,14 @@ class UPCSWaitResponse:
     contract_token: Optional[str]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class UbuntuProService:
     name: str
     description: str
     auto_enabled: bool
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class UbuntuProSubscription:
     contract_name: str
     account_name: str
@@ -461,7 +461,7 @@ class UbuntuProSubscription:
     services: List[UbuntuProService]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class UbuntuProCheckTokenAnswer:
     status: UbuntuProCheckTokenStatus
 
@@ -484,14 +484,14 @@ class TaskStatus(enum.Enum):
     ERROR = "Error"
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class TaskProgress:
     label: str = ""
     done: int = 0
     total: int = 0
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class Task:
     id: str
     kind: str
@@ -500,7 +500,7 @@ class Task:
     progress: TaskProgress = TaskProgress()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class Change:
     id: str
     kind: str
@@ -525,14 +525,14 @@ class MirrorCheckStatus(enum.Enum):
     FAILED = "FAILED"
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class MirrorCheckResponse:
     url: str
     status: MirrorCheckStatus
     output: str
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class MirrorPost:
     elected: Optional[str] = None
     candidates: Optional[List[str]] = None
@@ -545,7 +545,7 @@ class MirrorPostResponse(enum.Enum):
     NO_USABLE_MIRROR = "no-usable-mirror"
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class MirrorGet:
     relevant: bool
     elected: Optional[str]
@@ -562,11 +562,11 @@ class MirrorSelectionFallback(enum.Enum):
     OFFLINE_INSTALL = "offline-install"
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class AdConnectionInfo:
     admin_name: str = ""
     domain_name: str = ""
-    password: str = attr.ib(repr=False, default="")
+    password: str = attrs.field(repr=False, default="")
 
 
 class AdAdminNameValidation(enum.Enum):

@@ -15,7 +15,7 @@
 
 import math
 
-import attr
+import attrs
 
 from subiquity.common.types.storage import GuidedResizeValues
 from subiquity.models.filesystem import GiB, MiB, align_down, align_up
@@ -24,7 +24,7 @@ BIOS_GRUB_SIZE_BYTES = 1 * MiB
 PREP_GRUB_SIZE_BYTES = 8 * MiB
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class PartitionScaleFactors:
     minimum: int
     priority: int

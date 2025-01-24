@@ -19,7 +19,7 @@ client and server processes. View code should only use these types!"""
 import enum
 from typing import Any, Dict, List, Optional, Union
 
-import attr
+import attrs
 
 from subiquity.common.types import ErrorReportRef
 
@@ -37,7 +37,7 @@ class Bootloader(enum.Enum):
     PREP = "PREP"  # ppc64el, which puts grub on a PReP partition
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class OsProber:
     long: str
     label: str
@@ -46,13 +46,13 @@ class OsProber:
     version: Optional[str] = None
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class Partition:
     size: Optional[int] = None
     number: Optional[int] = None
     preserve: Optional[bool] = None
     wipe: Optional[str] = None
-    annotations: List[str] = attr.ib(default=attr.Factory(list))
+    annotations: List[str] = attrs.field(default=attrs.Factory(list))
     mount: Optional[str] = None
     format: Optional[str] = None
     # curtin's definition of partition.grub_device - in a UEFI environment,
@@ -69,13 +69,13 @@ class Partition:
     is_in_use: bool = False
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class ZFS:
     volume: str
     properties: Optional[dict] = None
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class ZPool:
     pool: str
     mountpoint: str
@@ -90,14 +90,14 @@ class GapUsable(enum.Enum):
     TOO_MANY_PRIMARY_PARTS = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class Gap:
     offset: int
     size: int
     usable: GapUsable
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class Disk:
     id: str
     label: str
@@ -172,14 +172,14 @@ class GuidedDisallowedCapabilityReason(enum.Enum):
     THIRD_PARTY_DRIVERS = enum.auto()
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class GuidedDisallowedCapability:
     capability: GuidedCapability
     reason: GuidedDisallowedCapabilityReason
     message: Optional[str] = None
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class StorageResponse:
     status: ProbeStatus
     error_report: Optional[ErrorReportRef] = None
@@ -190,11 +190,11 @@ class StorageResponse:
     storage_version: int = 1
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class StorageResponseV2:
     status: ProbeStatus
     error_report: Optional[ErrorReportRef] = None
-    disks: List[Disk] = attr.Factory(list)
+    disks: List[Disk] = attrs.Factory(list)
     # if need_root == True, there is not yet a partition mounted at "/"
     need_root: Optional[bool] = None
     # if need_boot == True, there is not yet a boot partition
@@ -215,7 +215,7 @@ class SizingPolicy(enum.Enum):
         raise Exception(f"Unknown SizingPolicy value {value}")
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class GuidedResizeValues:
     install_max: int
     minimum: int
@@ -223,14 +223,14 @@ class GuidedResizeValues:
     maximum: int
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class GuidedStorageTargetReformat:
     disk_id: str
-    allowed: List[GuidedCapability] = attr.Factory(list)
-    disallowed: List[GuidedDisallowedCapability] = attr.Factory(list)
+    allowed: List[GuidedCapability] = attrs.Factory(list)
+    disallowed: List[GuidedDisallowedCapability] = attrs.Factory(list)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class GuidedStorageTargetResize:
     disk_id: str
     partition_number: int
@@ -238,8 +238,8 @@ class GuidedStorageTargetResize:
     minimum: Optional[int]
     recommended: Optional[int]
     maximum: Optional[int]
-    allowed: List[GuidedCapability] = attr.Factory(list)
-    disallowed: List[GuidedDisallowedCapability] = attr.Factory(list)
+    allowed: List[GuidedCapability] = attrs.Factory(list)
+    disallowed: List[GuidedDisallowedCapability] = attrs.Factory(list)
 
     @staticmethod
     def from_recommendations(part, resize_vals, allowed):
@@ -254,26 +254,26 @@ class GuidedStorageTargetResize:
         )
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class GuidedStorageTargetEraseInstall:
     disk_id: str
     partition_number: int
-    allowed: List[GuidedCapability] = attr.Factory(list)
-    disallowed: List[GuidedDisallowedCapability] = attr.Factory(list)
+    allowed: List[GuidedCapability] = attrs.Factory(list)
+    disallowed: List[GuidedDisallowedCapability] = attrs.Factory(list)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class GuidedStorageTargetUseGap:
     disk_id: str
     gap: Gap
-    allowed: List[GuidedCapability] = attr.Factory(list)
-    disallowed: List[GuidedDisallowedCapability] = attr.Factory(list)
+    allowed: List[GuidedCapability] = attrs.Factory(list)
+    disallowed: List[GuidedDisallowedCapability] = attrs.Factory(list)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class GuidedStorageTargetManual:
-    allowed: List[GuidedCapability] = attr.Factory(lambda: [GuidedCapability.MANUAL])
-    disallowed: List[GuidedDisallowedCapability] = attr.Factory(list)
+    allowed: List[GuidedCapability] = attrs.Factory(lambda: [GuidedCapability.MANUAL])
+    disallowed: List[GuidedDisallowedCapability] = attrs.Factory(list)
 
 
 GuidedStorageTarget = Union[
@@ -285,7 +285,7 @@ GuidedStorageTarget = Union[
 ]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class RecoveryKey:
     # Where to store the key in the live system.
     live_location: Optional[str] = None
@@ -310,13 +310,13 @@ class RecoveryKey:
         )
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class GuidedChoiceV2:
     target: GuidedStorageTarget
     capability: GuidedCapability
 
     # Those two fields are only used when using LVM+LUKS
-    password: Optional[str] = attr.ib(default=None, repr=False)
+    password: Optional[str] = attrs.field(default=None, repr=False)
     recovery_key: Optional[RecoveryKey] = None
 
     sizing_policy: Optional[SizingPolicy] = SizingPolicy.SCALED
@@ -324,28 +324,28 @@ class GuidedChoiceV2:
     reset_partition_size: Optional[int] = None
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class GuidedStorageResponseV2:
     status: ProbeStatus
     error_report: Optional[ErrorReportRef] = None
     configured: Optional[GuidedChoiceV2] = None
-    targets: List[GuidedStorageTarget] = attr.Factory(list)
+    targets: List[GuidedStorageTarget] = attrs.Factory(list)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class AddPartitionV2:
     disk_id: str
     partition: Partition
     gap: Gap
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class ModifyPartitionV2:
     disk_id: str
     partition: Partition
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class ReformatDisk:
     disk_id: str
     ptable: Optional[str] = None

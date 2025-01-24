@@ -22,7 +22,7 @@ import tempfile
 from pathlib import Path
 from typing import List, Optional, Union
 
-import attr
+import attrs
 
 log = logging.getLogger("subiquity.server.mounter")
 
@@ -69,13 +69,13 @@ class _MountBase:
             fp.write(content)
 
 
-@attr.s(auto_attribs=True, kw_only=True)
+@attrs.define(auto_attribs=True, kw_only=True)
 class Mountpoint(_MountBase):
     mountpoint: str
     created: bool = False
 
 
-@attr.s(auto_attribs=True, kw_only=True)
+@attrs.define(auto_attribs=True, kw_only=True)
 class OverlayMountpoint(_MountBase):
     # The first element in lowers will be the bottom layer and the last element
     # will be the top layer.

@@ -18,7 +18,7 @@ import io
 import logging
 from typing import List, Optional
 
-import attr
+import attrs
 
 from subiquity.common.apidef import API
 from subiquity.common.types import (
@@ -48,7 +48,7 @@ class MirrorCheckNotStartedError(Exception):
     check that was not started."""
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class MirrorCheck:
     task: asyncio.Task
     output: io.StringIO

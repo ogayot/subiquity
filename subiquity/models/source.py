@@ -18,7 +18,7 @@ import logging
 import os
 import typing
 
-import attr
+import attrs
 import yaml
 
 from subiquity.common.serialize import Serializer
@@ -26,14 +26,14 @@ from subiquity.common.serialize import Serializer
 log = logging.getLogger("subiquity.models.source")
 
 
-@attr.s(auto_attribs=True, kw_only=True)
+@attrs.define(auto_attribs=True, kw_only=True)
 class CatalogEntryVariation:
     path: str = ""
     size: int
     snapd_system_label: typing.Optional[str] = None
 
 
-@attr.s(auto_attribs=True, kw_only=True)
+@attrs.define(auto_attribs=True, kw_only=True)
 class CatalogEntry:
     variant: str
     id: str
@@ -43,10 +43,10 @@ class CatalogEntry:
     size: int
     type: typing.Optional[str]
     default: bool = False
-    locale_support: str = attr.ib(default="locale-only")
-    preinstalled_langs: typing.List[str] = attr.Factory(list)
+    locale_support: str = attrs.field(default="locale-only")
+    preinstalled_langs: typing.List[str] = attrs.Factory(list)
     snapd_system_label: typing.Optional[str] = None
-    variations: typing.Dict[str, CatalogEntryVariation] = attr.Factory(dict)
+    variations: typing.Dict[str, CatalogEntryVariation] = attrs.Factory(dict)
 
     def __attrs_post_init__(self):
         if not self.variations:
@@ -76,14 +76,14 @@ class BridgeKernelReason(enum.Enum):
     ZFS = "zfs"
 
 
-@attr.s(auto_attribs=True, kw_only=True)
+@attrs.define(auto_attribs=True, kw_only=True)
 class KernelInfo:
     default: str
     bridge: typing.Optional[str] = None
-    bridge_reasons: typing.List[BridgeKernelReason] = attr.Factory(list)
+    bridge_reasons: typing.List[BridgeKernelReason] = attrs.Factory(list)
 
 
-@attr.s(auto_attribs=True, kw_only=True)
+@attrs.define(auto_attribs=True, kw_only=True)
 class SourceCatalog:
     version: int
     sources: typing.List[CatalogEntry]

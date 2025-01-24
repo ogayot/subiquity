@@ -292,7 +292,7 @@ class AptConfigurer:
             # TODO self.unmount expects a Mountpoint object. Unfortunately, the
             # one we created in setup_overlay was discarded and replaced by an
             # OverlayMountPoint object instead. Here we re-create a new
-            # Mountpoint object and (thanks to attr.s) make sure that it
+            # Mountpoint object and (thanks to attrs.define) make sure that it
             # compares equal to the one we discarded earlier.
             # But really, there should be better ways to handle this.
             try:
