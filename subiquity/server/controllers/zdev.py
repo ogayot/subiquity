@@ -18,12 +18,13 @@ import logging
 import platform
 import random
 from collections import OrderedDict
-from typing import List
+from typing import List, Literal, Optional, TypedDict
 
 from subiquity.common.apidef import API
 from subiquity.common.types import ZdevInfo
 from subiquity.common.types.storage import Bootloader
 from subiquity.server.controller import SubiquityController
+from subiquitycore.context import with_context
 from subiquitycore.utils import arun_command, run_command
 
 log = logging.getLogger("subiquity.server.controllers.zdev")
@@ -593,10 +594,34 @@ id="0.0.f1fe:0.0.f1ff" type="ctc" on="no" exists="yes" pers="no" auto="no" faile
 id="0.0.c0fe" type="generic-ccw" on="no" exists="yes" pers="no" auto="no" failed="yes" names=""'''  # noqa: E501
 
 
+class ZdevAiDict(TypedDict, total=False):
+    enable: list[str]
+    disable: list[str]
+
+
 class ZdevController(SubiquityController):
     endpoint = API.zdev
 
+    autoinstall_key = "zdev-devices"
+    autoinstall_schema = {
+        "type": "object",
+        "properties": {
+            "disable": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+            "enable": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+        },
+    }
+    autoinstall_default = {}
+
     def __init__(self, app):
+        self.ai_data: ZdevAiDict = {}
+        self.zdev_handling_task: Optional[asyncio.Task] = None
+
         super().__init__(app)
         if self.opts.dry_run:
             if platform.machine() == "s390x":
@@ -607,20 +632,52 @@ class ZdevController(SubiquityController):
                 zdevinfos = [ZdevInfo.from_row(row) for row in devices]
             self.zdevinfos = OrderedDict([(i.id, i) for i in zdevinfos])
 
+    def load_autoinstall_data(self, data: ZdevAiDict) -> None:
+        self.ai_data = data
+        self.ai_data_output = copy.deepcopy(self.ai_data)
+
+    @with_context()
+    async def apply_autoinstall_config(self, context) -> None:
+        if self.zdev_handling_task is not None:
+            await self.zdev_handling_task
+
+    def start(self) -> None:
+        if self.ai_data:
+            self.zdev_handling_task = asyncio.create_task(self.handle_zdevs())
+
+    def make_autoinstall(self) -> ZdevAiData:
+        # TODO consider adding manually enabled/disabled devices here.
+        return self.ai_data
+
+    async def handle_zdevs(self) -> None:
+        for dev in self.ai_data.get("enable", []):
+            await self.chzdev("enable", self.zdevinfos[dev])
+        for dev in self.ai_data.get("disable", []):
+            await self.chzdev("disable", dev, self.zdevinfos[dev])
+
     def interactive(self):
         if self.app.base_model.filesystem.bootloader != Bootloader.NONE:
             return False
         return super().interactive()
 
-    async def chzdev_POST(self, action: str, zdev: ZdevInfo) -> List[ZdevInfo]:
+    async def chzdev(
+        self, action: Literal["enable", "disable"], zdev: ZdevInfo
+    ) -> None:
+        if action == "enable":
+            on = True
+        elif action == "disable":
+            on = False
+        else:
+            raise ValueError("action must be 'enable' or 'disable'")
         if self.opts.dry_run:
-            await asyncio.sleep(random.random() * 0.4)
-            on = action == "enable"
             self.zdevinfos[zdev.id].on = on
             self.zdevinfos[zdev.id].pers = on
-        else:
-            chzdev_cmd = ["chzdev", "--%s" % action, zdev.id]
-            await arun_command(chzdev_cmd)
+            await asyncio.sleep(random.random() * 0.4)
+        chzdev_cmd = ["chzdev", "--%s" % action, zdev.id]
+        await self.app.command_runner.run(chzdev_cmd)
+
+    async def chzdev_POST(self, action: str, zdev: ZdevInfo) -> List[ZdevInfo]:
+        await self.chzdev(action, zdev)
         return await self.GET()
 
     async def GET(self) -> List[ZdevInfo]:

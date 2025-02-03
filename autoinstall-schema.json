@@ -139,6 +139,23 @@
             ],
             "additionalProperties": false
         },
+        "zdev-devices": {
+            "type": "object",
+            "properties": {
+                "disable": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "enable": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "source": {
             "type": "object",
             "properties": {
