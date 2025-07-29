@@ -7,8 +7,8 @@ PYTHONPATH=$(shell pwd):$(shell pwd)/probert:$(shell pwd)/curtin
 PROBERTDIR=./probert
 PROBERT_REPO=https://github.com/canonical/probert
 DRYRUN?=--dry-run --bootloader uefi --machine-config examples/machines/simple.json \
-	--source-catalog examples/sources/install.yaml \
-	--postinst-hooks-dir examples/postinst.d/
+	--source-catalog examples/sources/tpm.yaml \
+	--postinst-hooks-dir examples/postinst.d/ --dry-run-config examples/dry-run-configs/tpm.yaml
 UNITTESTARGS?=
 COVERAGEARGS:=--cov=subiquity --cov=subiquitycore --cov=console_conf
 COVERAGEARGS+=--cov-report xml:.coverage/cobertura.xml

@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
+import contextlib
 import functools
 import glob
 import json
@@ -85,6 +86,7 @@ from subiquity.models.filesystem import (
     align_up,
     humanize_size,
 )
+from subiquity.models.source import CatalogEntry
 from subiquity.server.autoinstall import AutoinstallError
 from subiquity.server.controller import SubiquityController
 from subiquity.server.controllers.source import SEARCH_DRIVERS_AUTOINSTALL_DEFAULT
@@ -97,6 +99,7 @@ from subiquitycore.async_helpers import (
     SingleInstanceTask,
     TaskAlreadyRunningError,
     exclusive,
+    run_bg_task,
     schedule_task,
 )
 from subiquitycore.context import with_context
@@ -289,6 +292,12 @@ def validate_pin_pass(
         raise StorageRecoverableError("pin is a string of digits")
 
 
+@attr.s(auto_attribs=True)
+class SourceInfo:
+    source_id: str
+    variations_task: asyncio.Task[dict[str, VariationInfo]]
+
+
 class FilesystemController(SubiquityController, FilesystemManipulator):
     endpoint = API.storage
 
@@ -314,14 +323,24 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
         self._probe_task = SingleInstanceTask(
             self._probe, propagate_errors=False, cancel_restart=False
         )
-        self._examine_systems_task = SingleInstanceTask(self._examine_systems)
         self.supports_resilient_boot = False
         self.app.hub.subscribe(
             (InstallerChannels.CONFIGURED, "source"),
-            self._examine_systems_task.start_sync,
+            self.on_source_change,
         )
         self.app.hub.subscribe(InstallerChannels.PRE_SHUTDOWN, self._pre_shutdown)
-        self._variation_info: Dict[str, VariationInfo] = {}
+
+        self._sources_info: dict[str, SourceInfo] = {}
+
+        # These are references to information about the current source, but
+        # watch out, changing the source will update the references. Use the
+        # underlying objects in _sources_info for "stable" instances.
+        self._current_source_info: Optional[SourceInfo] = None
+        self._current_source_variations_task: Optional[
+            asyncio.Task[dict[str, VariationInfo]]
+        ] = None
+        self._current_source_variations: Optional[dict[str, VariationInfo]] = None
+
         self._info: Optional[VariationInfo] = None
         self._system_getter = SystemGetter(self.app)
         self._on_volume: Optional[snapdtypes.OnVolume] = None
@@ -338,6 +357,37 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
 
         # If needed, this can be moved outside of the storage/filesystem stuff.
         self._probe_firmware_task = SingleInstanceTask(self._probe_firmware)
+
+    def on_source_change(self):
+        source = self.app.base_model.source.current
+
+        self._current_source_variations = None
+
+        if source.id in self._sources_info:
+            source_info = self._sources_info[source.id]
+            self._current_source_info = source_info
+            self._current_source_variations_task = source_info.variations_task
+            with contextlib.suppress(asyncio.CancelledError, asyncio.InvalidStateError):
+                self._current_source_variations = source_info.variations_task.result()
+            return
+
+        source_info = SourceInfo(
+            source_id=source.id,
+            variations_task=asyncio.create_task(self._examine_systems(source)),
+        )
+
+        async def update_cache_after():
+            variations = await source_info.variations_task
+            print("updating cache")
+            if source is not self.app.base_model.source.current:
+                return
+            print("there we go", variations)
+            self._current_source_variations = variations
+
+        run_bg_task(update_cache_after())
+
+        self._current_source_info = self._sources_info[source.id] = source_info
+        self._current_source_variations_task = source_info.variations_task
 
     def is_core_boot_classic(self):
         return self._info.is_core_boot_classic()
@@ -364,7 +414,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
     async def configured(self):
         # set_info_capability() requires variations info to be populated, so
         # wait for it.
-        await self._examine_systems_task.wait()
+        await self._current_source_info.variations_task
         self._configured = True
         if self._info is None:
             self.set_info_for_capability(GuidedCapability.DIRECT)
@@ -473,9 +523,8 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
                     ),
                 )
 
-    async def _examine_systems(self) -> None:
-        self._variation_info.clear()
-        catalog_entry = self.app.base_model.source.current
+    async def _examine_systems(self, source: CatalogEntry) -> dict[str, VariationInfo]:
+        variations_info: dict[str, VariationInfo] = {}
 
         try:
             has_beta_entropy_check = await self.app.snapdinfo.has_beta_entropy_check()
@@ -485,7 +534,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
             )
             has_beta_entropy_check = True
 
-        for name, variation in catalog_entry.variations.items():
+        for name, variation in source.variations.items():
             system = None
             label = variation.snapd_system_label
             if label is not None:
@@ -500,7 +549,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
                     self._system_getter.get(
                         name,
                         label,
-                        source_id=catalog_entry.id,
+                        source_id=source.id,
                         started_event=in_critical_section,
                     )
                 )
@@ -529,19 +578,21 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
                 if not in_live_layer:
                     info.needs_systems_mount = True
                 self._maybe_disable_encryption(info)
-            elif catalog_entry.type.startswith("dd-"):
+            elif source.type.startswith("dd-"):
                 min_size = variation.size
                 info = VariationInfo.dd(name=name, min_size=min_size)
             else:
                 info = VariationInfo.classic(name=name, min_size=variation.size)
-            self._variation_info[name] = info
+            variations_info[name] = info
+
+        return variations_info
 
     @with_context()
     async def apply_autoinstall_config(self, context=None):
         await self._start_task
         await self._probe_task.wait()
         await self._probe_firmware_task.wait()
-        await self._examine_systems_task.wait()
+        await self._current_source_info.variations_task
         if False in self._errors:
             raise self._errors[False][0]
         if True in self._errors:
@@ -550,7 +601,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
             # If there are any classic variations, we default that.
             if any(
                 not variation.is_core_boot_classic()
-                for variation in self._variation_info.values()
+                for variation in self._current_source_info.variations_task.result().values()
                 if variation.is_valid()
             ):
                 self.ai_data = {
@@ -787,7 +838,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
         else:
             # Otherwise, just look for what we were asked for.
             caps = {capability}
-        for info in self._variation_info.values():
+        for info in self._current_source_variations_task.result().values():
             if caps & set(info.capability_info.allowed):
                 self._info = info
                 return
@@ -873,9 +924,9 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
             return resp_cls(
                 status=ProbeStatus.FAILED, error_report=self._errors[True][1].ref()
             )
-        if not self._examine_systems_task.done():
+        if not self._current_source_info.variations_task.done():
             if wait:
-                await self._examine_systems_task.wait()
+                await self._current_source_info.variations_task
             else:
                 return resp_cls(status=ProbeStatus.PROBING)
         return None
@@ -1241,7 +1292,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
 
     def get_classic_capabilities(self):
         classic_capabilities = set()
-        for info in self._variation_info.values():
+        for info in self._current_source_variations.values():
             if not info.is_valid():
                 continue
             if not info.is_core_boot_classic():
@@ -1296,7 +1347,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
 
         for disk in self.potential_boot_disks(with_reformatting=True):
             capability_info = CapabilityInfo()
-            for variation in self._variation_info.values():
+            for variation in self._current_source_variations.values():
                 gap = gaps.largest_gap(disk._reformatted())
                 capability_info.combine(
                     variation.capability_info_for_gap(gap, install_min)
@@ -1338,7 +1389,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
                 continue
 
             capability_info = CapabilityInfo()
-            for variation in self._variation_info.values():
+            for variation in self._current_source_variations.values():
                 if variation.is_core_boot_classic():
                     continue
                 capability_info.combine(
@@ -1438,7 +1489,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
                     continue
 
                 capability_info = CapabilityInfo()
-                for variation in self._variation_info.values():
+                for variation in self._current_source_variations.values():
                     if variation.is_core_boot_classic():
                         continue
                     capability_info.combine(
@@ -1686,7 +1737,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
                 GuidedCapability.CORE_BOOT_PREFER_ENCRYPTED,
                 GuidedCapability.CORE_BOOT_PREFER_UNENCRYPTED,
             }
-            for candidate_info in self._variation_info.values():
+            for candidate_info in self._current_source_variations.values():
                 if caps & set(candidate_info.capability_info.allowed):
                     info = candidate_info
                     break
@@ -1950,7 +2001,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
         return matching_disks[0]
 
     def has_valid_non_core_boot_variation(self) -> bool:
-        for variation in self._variation_info.values():
+        for variation in self._current_source_variations.values():
             if not variation.is_valid():
                 continue
             if not variation.is_core_boot_classic():
@@ -1967,7 +2018,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
             # this check is conceptually unnecessary but results in a
             # much cleaner error message...
             core_boot_caps = set()
-            for variation in self._variation_info.values():
+            for variation in self._current_source_variations_task.result().values():
                 if not variation.is_valid():
                     continue
                 if variation.is_core_boot_classic():
@@ -2110,7 +2161,7 @@ class FilesystemController(SubiquityController, FilesystemManipulator):
             # XXX in principle should there be a way to influence the
             # variation chosen here? Not with current use cases for
             # variations anyway.
-            for variation in self._variation_info.values():
+            for variation in self._current_source_variations.values():
                 if not variation.is_valid():
                     continue
                 if not variation.is_core_boot_classic():

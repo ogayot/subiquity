@@ -53,7 +53,7 @@ from subiquity.common.types.storage import (
     SizingPolicy,
 )
 from subiquity.models.filesystem import dehumanize_size
-from subiquity.models.source import CatalogEntryVariation
+from subiquity.models.source import CatalogEntry, CatalogEntryVariation
 from subiquity.models.tests.test_filesystem import (
     FakeStorageInfo,
     make_disk,
@@ -844,6 +844,7 @@ class TestSubiquityControllerFilesystem(IsolatedAsyncioTestCase):
         # variations. This lead to a crash further in the install.
         self.fsc.model = model = make_model(Bootloader.UEFI)
         make_disk(model)
+        self.app.base_model.source.current = mock.Mock(spec=attrs.fields(CatalogEntry))
         self.app.base_model.source.current.type = "fsimage"
         self.app.base_model.source.current.variations = {
             "minimal": CatalogEntryVariation(path="", size=1),
@@ -852,19 +853,28 @@ class TestSubiquityControllerFilesystem(IsolatedAsyncioTestCase):
         self.app.dr_cfg = DRConfig()
         self.app.dr_cfg.systems_dir_exists = True
 
-        await self.fsc._examine_systems()
+        self.fsc.on_source_change()
 
-        self.assertEqual(len(self.fsc._variation_info), 1)
-        self.assertEqual(self.fsc._variation_info["minimal"].name, "minimal")
+        await self.fsc._current_source_info.variations_task
 
+        self.assertEqual(len(self.fsc._current_source_info.variations_task.result()), 1)
+        self.assertEqual(
+            self.fsc._current_source_info.variations_task.result()["minimal"].name,
+            "minimal",
+        )
+
+        self.app.base_model.source.current = mock.Mock(spec=attrs.fields(CatalogEntry))
+        self.app.base_model.source.current.type = "fsimage"
         self.app.base_model.source.current.variations = {
             "default": CatalogEntryVariation(path="", size=1),
         }
 
-        await self.fsc._examine_systems()
+        self.fsc.on_source_change()
 
-        self.assertEqual(len(self.fsc._variation_info), 1)
-        self.assertEqual(self.fsc._variation_info["default"].name, "default")
+        await self.fsc._current_source_info.variations_task
+
+        self.assertEqual(len(self.fsc._current_source_variations), 1)
+        self.assertEqual(self.fsc._current_source_variations["default"].name, "default")
 
     def test_valid_schema(self):
         """Test that the expected autoinstall JSON schema is valid"""
@@ -1160,9 +1170,8 @@ class TestRunAutoinstallGuided(IsolatedAsyncioTestCase):
         }
 
     async def asyncSetUp(self):
-        self.fsc._examine_systems_task.start_sync()
-
-        await self.fsc._examine_systems_task.wait()
+        self.fsc.on_source_change()
+        await self.fsc._current_source_variations_task
 
     async def test_direct_use_gap__install_media(self):
         """Match directives were previously not honored when using mode: use_gap.
@@ -1198,6 +1207,7 @@ class TestRunAutoinstallGuided(IsolatedAsyncioTestCase):
             p_guided_choice_v2 as m_guided_choice_v2,
             p_largest_gap as m_largest_gap,
         ):
+            print("variations", self.fsc._current_source_variations)
             await self.fsc.run_autoinstall_guided(layout)
 
         # largest_gap will call itself recursively, so we should not expect a
@@ -1234,7 +1244,6 @@ class TestGuided(IsolatedAsyncioTestCase):
         self.app.snapdinfo = mock.Mock(spec=SnapdInfo)
         self.controller = FilesystemController(self.app)
         self.controller.supports_resilient_boot = True
-        self.controller._examine_systems_task.start_sync()
         self.controller.cryptoswap_options = ["a", "b"]
         self.app.dr_cfg = DRConfig()
         self.app.base_model.source.current.type = "fsimage"
@@ -1242,7 +1251,8 @@ class TestGuided(IsolatedAsyncioTestCase):
             "default": CatalogEntryVariation(path="", size=1),
         }
         self.app.controllers.Source.get_handler.return_value = TrivialSourceHandler("")
-        await self.controller._examine_systems_task.wait()
+        self.controller.on_source_change()
+        await self.controller._current_source_info.variations_task
         self.model = make_model(bootloader, storage_version)
         self.controller.model = self.model
         self.d1 = make_disk(self.model, ptable=ptable)
@@ -1646,14 +1656,14 @@ class TestGuidedV2(IsolatedAsyncioTestCase):
         self.fsc.calculate_suggested_install_min = mock.Mock()
         self.fsc.calculate_suggested_install_min.return_value = 10 << 30
         self.fsc.model = self.model = make_model(bootloader)
-        self.fsc._examine_systems_task.start_sync()
         self.app.dr_cfg = DRConfig()
         self.app.base_model.source.current.type = "fsimage"
         self.app.base_model.source.current.variations = {
             "default": CatalogEntryVariation(path="", size=1),
         }
         self.app.controllers.Source.get_handler.return_value = TrivialSourceHandler("")
-        await self.fsc._examine_systems_task.wait()
+        self.fsc.on_source_change()
+        await self.fsc._current_source_info.variations_task
         self.disk = make_disk(self.model, ptable=ptable, **kw)
         self.model.storage_version = 2
         self.fs_probe = {}
@@ -1662,7 +1672,7 @@ class TestGuidedV2(IsolatedAsyncioTestCase):
             "filesystem": self.fs_probe,
         }
         self.fsc._probe_task.task = mock.Mock()
-        self.fsc._examine_systems_task.task = mock.Mock()
+        # self.fsc._examine_systems_task.task = mock.Mock()
         if bootloader == Bootloader.BIOS and ptable != "msdos" and fix_bios:
             make_partition(
                 self.model,
@@ -2364,7 +2374,7 @@ class TestGuidedV2(IsolatedAsyncioTestCase):
 
 
 class TestManualBoot(IsolatedAsyncioTestCase):
-    def _setup(self, bootloader, ptable, **kw):
+    async def _setup(self, bootloader, ptable, **kw):
         self.app = make_app()
         self.app.opts.bootloader = bootloader.value
         self.fsc = FilesystemController(app=self.app)
@@ -2374,11 +2384,15 @@ class TestManualBoot(IsolatedAsyncioTestCase):
         self.model.storage_version = 2
         self.fsc._probe_task.task = mock.Mock()
         self.fsc._probe_firmware_task.task = mock.Mock()
-        self.fsc._examine_systems_task.task = mock.Mock()
+
+        self.fsc._examine_systems = mock.AsyncMock(return_value={})
+
+        self.fsc.on_source_change()
+        await self.fsc._current_source_variations_task
 
     @parameterized.expand(bootloaders_and_ptables)
     async def test_get_boot_disks_only(self, bootloader, ptable):
-        self._setup(bootloader, ptable)
+        await self._setup(bootloader, ptable)
         make_disk(self.model)
         resp = await self.fsc.v2_GET()
         [d] = resp.disks
@@ -2386,7 +2400,7 @@ class TestManualBoot(IsolatedAsyncioTestCase):
 
     @parameterized.expand(bootloaders_and_ptables)
     async def test_get_boot_disks_all(self, bootloader, ptable):
-        self._setup(bootloader, ptable)
+        await self._setup(bootloader, ptable)
         make_disk(self.model)
         make_disk(self.model)
         resp = await self.fsc.v2_GET()
@@ -2396,7 +2410,7 @@ class TestManualBoot(IsolatedAsyncioTestCase):
 
     @parameterized.expand(bootloaders_and_ptables)
     async def test_get_boot_disks_some(self, bootloader, ptable):
-        self._setup(bootloader, ptable)
+        await self._setup(bootloader, ptable)
         ctrler = make_nvme_controller(
             model=self.model, transport="tcp", tcp_addr="172.16.82.78", tcp_port=4420
         )
@@ -2417,7 +2431,7 @@ class TestManualBoot(IsolatedAsyncioTestCase):
 
     @parameterized.expand(bootloaders_and_ptables)
     async def test_get_boot_disks_no_remote(self, bootloader, ptable):
-        self._setup(bootloader, ptable)
+        await self._setup(bootloader, ptable)
         d = make_disk(self.model)
         with mock.patch.object(d, "on_remote_storage", return_value=False):
             resp = await self.fsc.v2_GET()
@@ -2632,7 +2646,7 @@ class TestCoreBootInstallMethods(IsolatedAsyncioTestCase):
 
         self.app.dr_cfg.systems_dir_exists = True
 
-        await self.fsc._examine_systems_task.start()
+        self.fsc.on_source_change()
         self.fsc.start()
 
         response = await self.fsc.v2_guided_GET(wait=True)
@@ -2701,8 +2715,8 @@ class TestCoreBootInstallMethods(IsolatedAsyncioTestCase):
 
         self.app.dr_cfg.systems_dir_exists = True
 
-        await self.fsc._examine_systems_task.start()
-        await self.fsc._examine_systems_task.wait()
+        self.fsc.on_source_change()
+        await self.fsc._current_source_info.variations_task
         self.fsc.start()
 
         await self.fsc.run_autoinstall_guided({"name": "hybrid"})
@@ -2728,7 +2742,7 @@ class TestCoreBootInstallMethods(IsolatedAsyncioTestCase):
             ),
         }
         self.app.dr_cfg.systems_dir_exists = True
-        await self.fsc._examine_systems_task.start()
+        self.fsc.on_source_change()
         self.fsc.start()
         response = await self.fsc.v2_guided_GET(wait=True)
         self.assertEqual(len(response.targets), 1)
