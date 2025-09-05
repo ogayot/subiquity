@@ -339,6 +339,18 @@ class BaseNetworkController(BaseController):
                         check=True,
                         env=env,
                     )
+
+                for dev in self.model.get_all_netdevs():
+                    if dev.type == "wlan" and dev.config and dev.configured_ssid == (None, None):
+                        try:
+                            log.debug("OLIV purposely failing as if netplan apply did")
+                            await arun_command(["/bin/false"], check=True)
+                        except subprocess.CalledProcessError as cpe:
+                            log.debug(
+                                f"CalledProcessError: stdout[{cpe.stdout}] stderr[{cpe.stderr}]"
+                            )
+                            error("apply")
+                            raise
             else:
                 if devs_to_down or devs_to_delete:
                     try:

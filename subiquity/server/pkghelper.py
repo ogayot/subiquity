@@ -103,7 +103,7 @@ class DryRunPackageInstaller(PackageInstaller):
     async def _install_wpa_supplicant(self) -> PackageInstallState:
         """Special implementation for wpasupplicant (used by code related to
         Wi-Fi interfaces)."""
-        await asyncio.sleep(10 / self.scale_factor)
+        await asyncio.sleep(0 / self.scale_factor)
         status = "DONE"
         for flag in self.debug_flags:
             if flag.startswith("wlan_install="):
