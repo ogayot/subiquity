@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical, Ltd.
+# Copyright 2025 Canonical, Ltd.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,18 +12,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""console-conf controllers"""
+import logging
+import subprocess
 
-from .chooser import RecoveryChooserConfirmController, RecoveryChooserController
-from .identity import IdentityController
-from .network import NetworkController
-from .welcome import RecoveryChooserWelcomeController, WelcomeController
+import subiquitycore.controllers.network
 
-__all__ = [
-    "IdentityController",
-    "NetworkController",
-    "WelcomeController",
-    "RecoveryChooserWelcomeController",
-    "RecoveryChooserController",
-    "RecoveryChooserConfirmController",
-]
+log = logging.getLogger("console_conf.controllers.network")
+
+
+class NetworkController(subiquitycore.controllers.network.NetworkController):
+    async def _apply_config(self, *args, **kwargs) -> None:
+        try:
+            await super()._apply_config(*args, **kwargs)
+        except subprocess.CalledProcessError as exc:
+            log.exception("_apply_config failed")
