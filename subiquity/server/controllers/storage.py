@@ -55,10 +55,12 @@ from subiquity.common.types.storage import (
     AddPartitionV2,
     Bootloader,
     CalculateEntropyRequest,
+    CoreBootAvailabilityErrorKind,
     CoreBootEncryptionFeature,
     CoreBootEncryptionRequirement,
     CoreBootEncryptionSupportError,
     CoreBootFixAction,
+    CoreBootFixActionWithArgs,
     CoreBootFixEncryptionSupport,
     Disk,
     EntropyResponse,
@@ -2186,7 +2188,9 @@ class StorageController(SubiquityController, StorageManipulator):
             return False
         return True
 
-    def ensure_core_boot_autoinstall_capability_compatible(self, capability) -> None:
+    async def ensure_core_boot_autoinstall_capability_compatible(
+        self, capability, *, autoproceed: set[CoreBootAvailabilityErrorKind] = set()
+    ) -> None:
         for allowed in self.find_allowed_capabilities(core_boot_classic=True):
             if capability.is_compatible_with(allowed):
                 return
@@ -2199,25 +2203,42 @@ class StorageController(SubiquityController, StorageManipulator):
             raise RuntimeError(f"invalid capability {capability.name}")
 
         # Now let's generate an autoinstall error that includes usable info
-        first_error = None
+        error = None
         try:
             disallowed_errors = self._find_disallowed_errors(capability)
         except ValueError:
             pass
         else:
             try:
-                first_error = next(iter(disallowed_errors)).kind.value
+                # We pick the first one ...
+                error = next(iter(disallowed_errors))
             except StopIteration:
                 pass
             else:
+                # If we accept to proceed with this one...
+                if (
+                    error.kind in autoproceed
+                    and CoreBootFixAction.PROCEED in error.actions
+                ):
+                    payload = CoreBootFixEncryptionSupport(
+                        action=CoreBootFixActionWithArgs(
+                            type=CoreBootFixAction.PROCEED,
+                        ),
+                    )
+                    await self.v2_core_boot_fix_encryption_support_POST(payload)
+                    # Let's try again...
+                    await self.ensure_core_boot_autoinstall_capability_compatible(
+                        capability, autoproceed=autoproceed
+                    )
+                    return
                 raise AutoinstallError(
                     _(
-                        f"hybrid layout ({encryption_text}) is not available: {first_error}"
+                        f"hybrid layout ({encryption_text}) is not available: {error.kind.value}"
                     )
                 )
         raise AutoinstallError(f"hybrid layout ({encryption_text}) is not available")
 
-    def get_core_boot_autoinstall_capability(
+    async def get_core_boot_autoinstall_capability(
         self, *, encrypted: bool | None
     ) -> GuidedCapability:
         core_boot_caps = set(self.find_allowed_capabilities(core_boot_classic=True))
@@ -2243,7 +2264,9 @@ class StorageController(SubiquityController, StorageManipulator):
 
         # this check is conceptually unnecessary but results in a
         # much cleaner error message...
-        self.ensure_core_boot_autoinstall_capability_compatible(capability)
+        await self.ensure_core_boot_autoinstall_capability_compatible(
+            capability, autoproceed={CoreBootAvailabilityErrorKind.RUNNING_IN_VM}
+        )
         return capability
 
     async def run_autoinstall_guided(self, layout):
@@ -2255,7 +2278,7 @@ class StorageController(SubiquityController, StorageManipulator):
         if name == "hybrid":
             if "mode" in layout:
                 raise AutoinstallError("cannot use 'mode' with hybrid layout")
-            capability = self.get_core_boot_autoinstall_capability(
+            capability = await self.get_core_boot_autoinstall_capability(
                 encrypted=layout.get("encrypted", None)
             )
 
