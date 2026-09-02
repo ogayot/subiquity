@@ -25,7 +25,7 @@ jobs:
           - lint
           - check
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: canonical/launch-workshop@v1
       with:
         workshop: subiquity-${{ matrix.series }}
@@ -34,7 +34,7 @@ jobs:
   format-black:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: psf/black@stable
         with:
           version: "~= 25.1.0"
@@ -42,7 +42,7 @@ jobs:
   format-isort:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: isort/isort-action@v1
         with:
           isort-version: "6.0.1"
@@ -55,7 +55,7 @@ jobs:
       - name: Install mypy and typeshed
         run: sudo apt-get install -y python3-mypy python3-typeshed
       - name: Checkout the pull request branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # When no ref is specified, a merge commit (from PR branch to target
           # branch) will be checked out. Use the last commit of the PR branch
@@ -76,7 +76,7 @@ jobs:
               "${{ github.event.pull_request.head.sha }}")
           echo "base_commit=$ancestor" >> "$GITHUB_OUTPUT"
       - name: Checkout the base commit (most recent common ancestor)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ steps.determine_base_commit.outputs.base_commit }}
       - run: git show
