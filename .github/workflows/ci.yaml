@@ -25,8 +25,8 @@ jobs:
           - lint
           - check
     steps:
-    - uses: actions/checkout@v4
-    - uses: canonical/launch-workshop@v1
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: canonical/launch-workshop@b9e184e38f49808ced78e25de19483fe02484c46 # v1
       with:
         workshop: subiquity-${{ matrix.series }}
     - name: run
@@ -34,7 +34,7 @@ jobs:
   format-black:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: psf/black@stable
         with:
           version: "~= 25.1.0"
@@ -42,8 +42,8 @@ jobs:
   format-isort:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: isort/isort-action@v1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: isort/isort-action@24d8a7a51d33ca7f36c3f23598dafa33f7071326 # v1
         with:
           isort-version: "6.0.1"
           sort-paths: "console_conf subiquity subiquitycore"
@@ -55,7 +55,7 @@ jobs:
       - name: Install mypy and typeshed
         run: sudo apt-get install -y python3-mypy python3-typeshed
       - name: Checkout the pull request branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # When no ref is specified, a merge commit (from PR branch to target
           # branch) will be checked out. Use the last commit of the PR branch
@@ -76,7 +76,7 @@ jobs:
               "${{ github.event.pull_request.head.sha }}")
           echo "base_commit=$ancestor" >> "$GITHUB_OUTPUT"
       - name: Checkout the base commit (most recent common ancestor)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ steps.determine_base_commit.outputs.base_commit }}
       - run: git show
